@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kenko1st Shelf Checker</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #f0f0f0; min-height: 100vh; }
+.app { max-width: 480px; margin: 0 auto; padding: 16px 16px 120px; }
+
+/* Header */
+.header { margin-bottom: 20px; }
+.header h1 { font-size: 24px; font-weight: 700; color: #c8f04c; }
+.header p { font-size: 13px; color: #888; margin-top: 2px; }
+
+/* Upload button */
+.upload-btn {
+  width: 100%; padding: 20px; background: #1e1e1e; border: 2px dashed #333;
+  border-radius: 14px; color: #aaa; font-size: 16px; font-weight: 500;
+  cursor: pointer; text-align: center; margin-bottom: 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  transition: background 0.2s;
+}
+.upload-btn:active { background: #2a2a2a; }
+.upload-btn .icon { font-size: 32px; }
+.upload-btn .sub { font-size: 12px; color: #666; }
+
+/* Preview */
+.preview-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 16px; }
+.preview-item { aspect-ratio: 1; border-radius: 10px; overflow: hidden; position: relative; background: #1e1e1e; }
+.preview-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.preview-remove {
+  position: absolute; top: 4px; right: 4px; width: 24px; height: 24px;
+  border-radius: 50%; background: rgba(0,0,0,0.75); border: none;
+  color: #fff; font-size: 13px; cursor: pointer; display: flex;
+  align-items: center; justify-content: center;
+}
+
+/* Loading */
+.loading { display: none; text-align: center; padding: 40px 20px; }
+.spinner { width: 40px; height: 40px; border: 3px solid #333; border-top-color: #c8f04c; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 14px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading p { color: #888; font-size: 14px; }
+.loading small { color: #555; font-size: 12px; }
+
+/* Error */
+.error { display: none; background: #2a1515; border: 1px solid #ff5252; color: #ff8080; padding: 14px; border-radius: 10px; font-size: 13px; margin-bottom: 14px; line-height: 1.5; }
+
+/* Summary */
+.summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.sum-card { background: #1e1e1e; border-radius: 12px; padding: 14px 10px; text-align: center; }
+.sum-num { font-size: 26px; font-weight: 700; }
+.sum-label { font-size: 11px; color: #888; margin-top: 3px; }
+.sum-total .sum-num { color: #f0f0f0; }
+.sum-ok .sum-num { color: #4caf50; }
+.sum-miss .sum-num { color: #ff5252; }
+
+/* Tip */
+.tip { background: #1a1a00; border: 1px solid #444400; color: #ffeb3b; padding: 12px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 14px; line-height: 1.5; display: none; }
+
+/* Filter */
+.filters { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 2px; }
+.filter { padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 500; border: 1px solid #333; background: #1e1e1e; color: #888; cursor: pointer; white-space: nowrap; }
+.filter.on { background: #222; border-color: #c8f04c; color: #c8f04c; }
+.filter.on.f-miss { border-color: #ff5252; color: #ff5252; background: #1a0000; }
+.filter.on.f-ok { border-color: #4caf50; color: #4caf50; background: #001a00; }
+
+/* Items */
+.item { background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 10px; padding: 13px 14px; margin-bottom: 6px; display: flex; align-items: center; gap: 12px; }
+.item.ok { border-color: rgba(76,175,80,0.3); background: rgba(76,175,80,0.05); }
+.item.miss { border-color: rgba(255,82,82,0.3); background: rgba(255,82,82,0.05); }
+.item.unverified { border-color: rgba(255,235,59,0.25); background: rgba(255,235,59,0.04); }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-ok { background: #4caf50; }
+.dot-miss { background: #ff5252; }
+.dot-unverified { background: #ffeb3b; }
+.item-info { flex: 1; min-width: 0; }
+.item-name { font-size: 14px; font-weight: 500; line-height: 1.3; }
+.item-code { font-size: 11px; color: #555; margin-top: 2px; font-family: monospace; }
+.badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 8px; border: none; cursor: pointer; font-family: inherit; flex-shrink: 0; }
+.badge-ok { background: rgba(76,175,80,0.15); color: #4caf50; }
+.badge-miss { background: rgba(255,82,82,0.15); color: #ff5252; }
+.badge-unverified { background: rgba(255,235,59,0.12); color: #ffeb3b; cursor: pointer; }
+
+/* Bottom bar */
+.bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(15,15,15,0.97); border-top: 1px solid #222; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); display: none; gap: 10px; max-width: 480px; margin: 0 auto; }
+.bottom-bar.show { display: flex; }
+.btn-copy { flex: 1; padding: 14px; background: #1e1e1e; border: 1px solid #333; border-radius: 10px; color: #f0f0f0; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; }
+.btn-share { flex: 1; padding: 14px; background: #c8f04c; border: none; border-radius: 10px; color: #0f0f0f; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+.toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(10px); background: #333; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; opacity: 0; transition: all 0.25s; pointer-events: none; white-space: nowrap; z-index: 999; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.results-section { display: none; }
+.sec-btn { padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 500; border: 1px solid #333; background: #1e1e1e; color: #888; cursor: pointer; font-family: inherit; }
+.sec-btn.active { border-color: #c8f04c; color: #c8f04c; background: #1a1f0a; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>Kenko1st</h1>
+    <p>SPAR Shelf Checker</p>
+  </div>
+
+  <!-- Section selector -->
+  <div style="margin-bottom:14px;">
+    <div style="font-size:12px;color:#888;margin-bottom:8px;">කුමන shelf section එකේ photos ද?</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="sec-btn active" id="sec-nuts" onclick="setSection('nuts')">🥜 Nuts & Seeds</button>
+      <button class="sec-btn" id="sec-cashew" onclick="setSection('cashew')">🫘 Cashew</button>
+      <button class="sec-btn" id="sec-littlets" onclick="setSection('littlets')">🥜 Little Ts</button>
+    </div>
+  </div>
+
+  <!-- Upload -->
+  <label class="upload-btn" for="file-input">
+    <span class="icon">📷</span>
+    <span>Shelf Photos Select කරන්න</span>
+    <span class="sub">Select කළාම automatically scan වෙනවා</span>
+  </label>
+  <input type="file" id="file-input" multiple accept="image/*" style="display:none;">
+
+  <div class="preview-grid" id="preview-grid"></div>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Shelf scan කරමින්...</p>
+    <small>AI photos analyze කරනවා</small>
+  </div>
+
+  <!-- Error -->
+  <div class="error" id="error"></div>
+
+  <!-- Results -->
+  <div class="results-section" id="results-section">
+    <div class="summary">
+      <div class="sum-card sum-total"><div class="sum-num" id="s-total">0</div><div class="sum-label">Total</div></div>
+      <div class="sum-card sum-ok"><div class="sum-num" id="s-ok">0</div><div class="sum-label">Shelf එකේ ඇත</div></div>
+      <div class="sum-card sum-miss"><div class="sum-num" id="s-miss">0</div><div class="sum-label">නැත</div></div>
+    </div>
+
+    <div class="tip" id="tip">
+      💡 <b>🟡 Verify?</b> — AI නොදැකිය හැකි items. Shelf physically check කරලා නැත්නම් tap කරන්න → <b>නැත ✓</b>
+    </div>
+
+    <div class="filters">
+      <button class="filter on" id="f-all" onclick="setFilter('all')">ඔක්කොම</button>
+      <button class="filter f-miss" id="f-miss" onclick="setFilter('miss')">🔴 නැත</button>
+      <button class="filter" id="f-unverified" onclick="setFilter('unverified')">🟡 Verify?</button>
+      <button class="filter f-ok" id="f-ok" onclick="setFilter('ok')">🟢 ඇත</button>
+    </div>
+
+    <div id="item-list"></div>
+  </div>
+</div>
+
+<div class="bottom-bar" id="bottom-bar">
+  <button class="btn-copy" onclick="copyList()">📋 Copy Missing</button>
+  <button class="btn-share" onclick="shareList()">📤 Share</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const WORKER_URL = "https://odd-grass-0c29.kenko1st-pubudu.workers.dev";
+
+const SECTIONS = {
+  "nuts": {
+    label: "Nuts & Seeds (Value Pack)",
+    items: [
+      { code: "4793001555025", name: "Hazel Nut 85g" },
+      { code: "4793001555032", name: "Basil Seed 100g" },
+      { code: "4793001555049", name: "Chia Seeds 100g" },
+      { code: "4793001555056", name: "Sunflower Seed 100g" },
+      { code: "4793001555254", name: "Almond 45g" },
+      { code: "4793001555353", name: "Pistachio 85g" },
+      { code: "4793001555360", name: "Almond 100g" },
+      { code: "4793001555377", name: "Flax Seed 100g" },
+      { code: "4793001555384", name: "Pumpkin Seeds 100g" },
+      { code: "4793001555391", name: "Organic Roasted Peanuts 200g" },
+      { code: "4793001555407", name: "Quinoa Seed 200g" },
+      { code: "4793001555414", name: "Walnut 85g" },
+      { code: "4793001555766", name: "Premium Nut Mix 75g" },
+      { code: "4793001555858", name: "Brain Booster 100g" },
+      { code: "4793001555889", name: "Chocolate with Three Nuts 100g" },
+      { code: "4793001555896", name: "Roasted Seed and Nuts Snack 100g" },
+      { code: "4793001555902", name: "Natural High Protein Mix 100g" },
+      { code: "4793001555926", name: "Nuts and Fruits 100g" },
+      { code: "9477359650603", name: "Kottamba Seeds 50g" },
+      { code: "9477359650625", name: "Dried Fruits Mix 100g" },
+    ]
+  },
+  "cashew": {
+    label: "Cashew Nuts (100g Packs)",
+    items: [
+      { code: "4793001319515", name: "Burnt Cashew Nuts 100g" },
+      { code: "4793001319517", name: "Cashew Nuts Chilli Garlic 100g" },
+      { code: "4793001319523", name: "Roasted Cashew Nut 100g" },
+      { code: "4793001319525", name: "Cashew Nut Salt & Pepper 100g" },
+      { code: "4793001319527", name: "Cashewnut Salt 100g" },
+      { code: "4793001319529", name: "Cashew Nuts Sugar Coated 100g" },
+      { code: "4793001319697", name: "Devilled Cashew Nut 100g" },
+      { code: "4793001555575", name: "Ceylon Cashew Devilled 75g" },
+      { code: "4793001555582", name: "Ceylon Cashew Burnt 75g" },
+      { code: "4796033640042", name: "Cooking Cashewnut 200g" },
+      { code: "8906115380161", name: "Oven Cashewnut 100g" },
+    ]
+  },
+  "littlets": {
+    label: "Little Ts & Peanuts",
+    items: [
+      { code: "4793001319546", name: "Little Ts Kithul Peanuts 100g" },
+      { code: "4793001319591", name: "Little Ts Deviled Peanuts 125g" },
+    ]
+  }
+};
+
+// Flat master list for reference
+const MASTER = Object.values(SECTIONS).flatMap(s => s.items);
+
+let files = [];
+let state = { ok: [], miss: [], unverified: [], confirmed: new Set() };
+let currentFilter = 'all';
+let currentSection = 'nuts';
+
+function setSection(sec) {
+  currentSection = sec;
+  document.querySelectorAll('.sec-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-' + sec).classList.add('active');
+  // Reset results when section changes
+  files = [];
+  document.getElementById('preview-grid').innerHTML = '';
+  document.getElementById('results-section').style.display = 'none';
+  document.getElementById('bottom-bar').classList.remove('show');
+}
+
+// File input
+document.getElementById('file-input').addEventListener('change', function(e) {
+  const newFiles = Array.from(this.files);
+  if (!newFiles.length) return;
+  files = [...files, ...newFiles];
+  renderPreviews();
+  this.value = '';
+  startScan();
+});
+
+function renderPreviews() {
+  const grid = document.getElementById('preview-grid');
+  grid.innerHTML = '';
+  files.forEach((f, i) => {
+    const url = URL.createObjectURL(f);
+    const div = document.createElement('div');
+    div.className = 'preview-item';
+    div.innerHTML = `<img src="${url}" alt=""><button class="preview-remove" onclick="removeFile(${i})">✕</button>`;
+    grid.appendChild(div);
+  });
+}
+
+function removeFile(i) {
+  files.splice(i, 1);
+  renderPreviews();
+  if (files.length === 0) {
+    document.getElementById('results-section').style.display = 'none';
+    document.getElementById('bottom-bar').classList.remove('show');
+  }
+}
+
+async function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+async function startScan() {
+  const loading = document.getElementById('loading');
+  const error = document.getElementById('error');
+  const results = document.getElementById('results-section');
+
+  loading.style.display = 'block';
+  error.style.display = 'none';
+  results.style.display = 'none';
+  document.getElementById('bottom-bar').classList.remove('show');
+
+  try {
+    const sectionItems = SECTIONS[currentSection].items;
+    const productNames = sectionItems.map(p => p.name).join('\n');
+
+    const content = [
+      {
+        type: "text",
+        text: `You are analyzing supermarket shelf photos.
+
+ONLY look at product PACKAGING (bags, pouches, boxes) — completely IGNORE shelf price tags, labels below shelves, and barcode stickers.
+
+Read the product name text printed directly on each Kenko1st bag/package.
+
+From this master list, identify which products you can confirm by reading the packaging:
+${productNames}
+
+STRICT RULES:
+- A product is "found" ONLY if you can read its name on an actual product bag/pouch in the photo
+- DO NOT use shelf tags or price labels to identify products
+- DO NOT guess — if the bag text is unclear or not visible, do not include it
+- Each cashew variety (Burnt, Chilli Garlic, Salt & Pepper, Sugar Coated, Salted) is a separate product — only mark the ones whose bags you can actually read
+- Seeds (Chia, Basil, Flax, Pumpkin, Sunflower) — only mark if you can read that seed name on a bag
+
+Respond ONLY in JSON:
+{"found":["exact name from master list"]}`
+      }
+    ];
+
+    const images = [];
+    for (const file of files) {
+      const b64 = await toBase64(file);
+      images.push({ mime_type: file.type || 'image/jpeg', data: b64 });
+    }
+
+    const promptText = content.find(c => c.type === 'text')?.text || '';
+
+    const resp = await fetch(`${WORKER_URL}/scan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: promptText, images })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Worker error ' + resp.status);
+
+    let text = (data.result || '').replace(/```json|```/g, '').trim();
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('Invalid AI response');
+
+    const parsed = JSON.parse(match[0]);
+    const foundList = (parsed.found || []).map(n => n.toLowerCase());
+
+    // Smarter matching - require multiple keyword overlap to avoid false positives
+    function isMatch(product, foundList) {
+      const pName = product.name.toLowerCase();
+      // Get meaningful words from product name (ignore weight like 100g, 85g etc)
+      const pWords = pName.replace(/\d+g/g, '').split(' ').filter(w => w.length > 3);
+      
+      return foundList.some(fn => {
+        const fnClean = fn.toLowerCase().replace(/\d+g/g, '');
+        const fnWords = fnClean.split(' ').filter(w => w.length > 3);
+        
+        // Count how many meaningful words overlap
+        const overlap = pWords.filter(w => fnClean.includes(w)).length;
+        const reverseOverlap = fnWords.filter(w => pName.includes(w)).length;
+        
+        // Need at least 2 word matches OR full phrase match to avoid false positives
+        // e.g. "Cashew" alone should NOT match "Cashew Nuts Chilli Garlic"
+        const totalWords = Math.min(pWords.length, fnWords.length);
+        return overlap >= 2 || reverseOverlap >= 2 || 
+               (totalWords <= 2 && (overlap >= 1 && reverseOverlap >= 1)) ||
+               pName.includes(fnClean) || fnClean.includes(pName);
+      });
+    }
+
+    state.ok = [];
+    state.miss = [];
+    state.unverified = [];
+    state.confirmed = new Set();
+
+    sectionItems.forEach(p => {
+      if (isMatch(p, foundList)) state.ok.push(p);
+      else state.unverified.push(p);
+    });
+
+    renderResults();
+
+  } catch (err) {
+    error.style.display = 'block';
+    error.textContent = '⚠ Error: ' + err.message;
+  } finally {
+    loading.style.display = 'none';
+  }
+}
+
+function renderResults() {
+  const confirmedMiss = state.unverified.filter(p => state.confirmed.has(p.code));
+  const pendingVerify = state.unverified.filter(p => !state.confirmed.has(p.code));
+
+  document.getElementById('s-total').textContent = SECTIONS[currentSection].items.length;
+  document.getElementById('s-ok').textContent = state.ok.length;
+  document.getElementById('s-miss').textContent = confirmedMiss.length;
+
+  document.getElementById('tip').style.display = pendingVerify.length ? 'block' : 'none';
+  document.getElementById('results-section').style.display = 'block';
+  document.getElementById('bottom-bar').classList.add('show');
+
+  renderList();
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter').forEach(b => b.classList.remove('on'));
+  document.getElementById('f-' + f)?.classList.add('on');
+  if (f === 'miss') document.getElementById('f-miss').classList.add('on');
+  renderList();
+}
+
+function renderList() {
+  const list = document.getElementById('item-list');
+  const confirmedMiss = state.unverified.filter(p => state.confirmed.has(p.code));
+  const pendingVerify = state.unverified.filter(p => !state.confirmed.has(p.code));
+
+  let items = [];
+  if (currentFilter === 'all') items = [...confirmedMiss, ...pendingVerify, ...state.ok];
+  else if (currentFilter === 'miss') items = confirmedMiss;
+  else if (currentFilter === 'unverified') items = pendingVerify;
+  else items = state.ok;
+
+  if (!items.length) {
+    list.innerHTML = `<div style="text-align:center;padding:30px;color:#555;font-size:14px;">Items නෑ</div>`;
+    return;
+  }
+
+  list.innerHTML = items.map(p => {
+    const isOk = state.ok.includes(p);
+    const isMiss = state.confirmed.has(p.code);
+    const isUnverified = state.unverified.includes(p) && !isMiss;
+
+    if (isOk) return `
+      <div class="item ok">
+        <div class="dot dot-ok"></div>
+        <div class="item-info">
+          <div class="item-name">${p.name}</div>
+          <div class="item-code">${p.code}</div>
+        </div>
+        <span class="badge badge-ok">ඇත</span>
+      </div>`;
+
+    if (isMiss) return `
+      <div class="item miss">
+        <div class="dot dot-miss"></div>
+        <div class="item-info">
+          <div class="item-name">${p.name}</div>
+          <div class="item-code">${p.code}</div>
+        </div>
+        <button class="badge badge-miss" onclick="toggleConfirm('${p.code}')">නැත ✓</button>
+      </div>`;
+
+    return `
+      <div class="item unverified">
+        <div class="dot dot-unverified"></div>
+        <div class="item-info">
+          <div class="item-name">${p.name}</div>
+          <div class="item-code">${p.code}</div>
+        </div>
+        <button class="badge badge-unverified" onclick="toggleConfirm('${p.code}')">Verify?</button>
+      </div>`;
+  }).join('');
+}
+
+function toggleConfirm(code) {
+  if (state.confirmed.has(code)) state.confirmed.delete(code);
+  else state.confirmed.add(code);
+  renderResults();
+}
+
+function getMissingText() {
+  const confirmed = state.unverified.filter(p => state.confirmed.has(p.code));
+  if (!confirmed.length) return 'Confirmed missing items නෑ.\n🟡 Verify? items tap කරලා confirm කරන්න.';
+  return `Kenko1st Missing Items — SPAR (${confirmed.length})\n` +
+    confirmed.map((p,i) => `${i+1}. ${p.name}\n   ${p.code}`).join('\n');
+}
+
+function copyList() {
+  const text = getMissingText();
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => showToast('Copy කළා ✓'));
+  else { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); showToast('Copy කළා ✓'); }
+}
+
+function shareList() {
+  const text = getMissingText();
+  if (navigator.share) navigator.share({ title: 'Kenko1st Missing Items', text });
+  else copyList();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>

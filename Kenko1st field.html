@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kenko1st Field Tool</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #f0f0f0; min-height: 100vh; }
+.screen { display: none; max-width: 480px; margin: 0 auto; padding: 20px 16px 100px; }
+.screen.active { display: block; }
+
+/* Header */
+.top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.top-bar h1 { font-size: 20px; font-weight: 700; color: #c8f04c; }
+.top-bar .sub { font-size: 12px; color: #666; }
+.back-btn { background: #1e1e1e; border: 1px solid #333; color: #aaa; padding: 7px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; font-family: inherit; }
+
+/* Cards */
+.card { background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 14px; padding: 16px; margin-bottom: 10px; cursor: pointer; transition: all 0.15s; }
+.card:active { background: #2a2a2a; transform: scale(0.99); }
+.card h3 { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+.card p { font-size: 12px; color: #666; }
+.card .arrow { color: #444; float: right; margin-top: -20px; font-size: 18px; }
+
+/* Section chips */
+.section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.sec-card { background: #1e1e1e; border: 2px solid #2a2a2a; border-radius: 12px; padding: 14px 12px; cursor: pointer; transition: all 0.15s; position: relative; }
+.sec-card:active { transform: scale(0.98); }
+.sec-card.done { border-color: #4caf50; background: rgba(76,175,80,0.08); }
+.sec-card.active-scan { border-color: #c8f04c; }
+.sec-card .sec-icon { font-size: 24px; margin-bottom: 6px; }
+.sec-card .sec-name { font-size: 13px; font-weight: 600; }
+.sec-card .sec-count { font-size: 11px; color: #666; margin-top: 2px; }
+.sec-card .done-badge { position: absolute; top: 8px; right: 8px; background: #4caf50; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 8px; }
+
+/* Upload */
+.upload-area { background: #1a1a1a; border: 2px dashed #2a2a2a; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 14px; cursor: pointer; }
+.upload-area:active { background: #222; }
+.upload-area .icon { font-size: 28px; margin-bottom: 6px; }
+.upload-area p { font-size: 14px; font-weight: 500; }
+.upload-area small { font-size: 12px; color: #666; }
+
+/* Preview */
+.preview-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 14px; }
+.thumb { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.thumb-del { width: 72px; height: 72px; border-radius: 8px; background: #1e1e1e; border: 1px solid #333; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; color: #ff5252; }
+
+/* Loading */
+.loading { text-align: center; padding: 30px; display: none; }
+.spinner { width: 36px; height: 36px; border: 3px solid #2a2a2a; border-top-color: #c8f04c; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading p { color: #888; font-size: 14px; }
+
+/* Results */
+.result-section { margin-bottom: 16px; }
+.result-title { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; font-weight: 600; }
+.item-row { display: flex; align-items: center; gap: 10px; padding: 11px 13px; background: #1e1e1e; border-radius: 10px; margin-bottom: 5px; border: 1px solid #2a2a2a; }
+.item-row.ok { border-color: rgba(76,175,80,0.25); background: rgba(76,175,80,0.05); }
+.item-row.miss { border-color: rgba(255,82,82,0.25); background: rgba(255,82,82,0.05); }
+.item-row.verify { border-color: rgba(255,235,59,0.2); background: rgba(255,235,59,0.04); }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.dot-ok { background: #4caf50; }
+.dot-miss { background: #ff5252; }
+.dot-verify { background: #ffeb3b; }
+.item-name { flex: 1; font-size: 13px; font-weight: 500; }
+.verify-tap { font-size: 11px; background: rgba(255,235,59,0.12); color: #ffeb3b; border: none; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-family: inherit; }
+.miss-tap { font-size: 11px; background: rgba(255,82,82,0.12); color: #ff5252; border: none; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-family: inherit; }
+
+/* Summary bar */
+.sum-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.sum-box { background: #1e1e1e; border-radius: 10px; padding: 12px 8px; text-align: center; }
+.sum-n { font-size: 22px; font-weight: 700; }
+.sum-l { font-size: 11px; color: #666; margin-top: 2px; }
+
+/* Notes */
+.notes-input { width: 100%; background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 10px; color: #f0f0f0; font-family: inherit; font-size: 14px; padding: 12px; resize: none; outline: none; }
+.notes-input:focus { border-color: #c8f04c44; }
+
+/* Buttons */
+.btn-full { width: 100%; padding: 15px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; border: none; margin-bottom: 10px; }
+.btn-green { background: #c8f04c; color: #0f0f0f; }
+.btn-dark { background: #1e1e1e; color: #f0f0f0; border: 1px solid #333; }
+.btn-red { background: #2a1010; color: #ff5252; border: 1px solid #ff525233; }
+
+/* Tags */
+.tag { display: inline-block; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 600; margin-right: 5px; margin-bottom: 5px; }
+.tag-miss { background: rgba(255,82,82,0.15); color: #ff5252; }
+.tag-ok { background: rgba(76,175,80,0.15); color: #4caf50; }
+
+/* Report preview */
+.report-box { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 16px; font-size: 13px; line-height: 1.8; color: #ccc; white-space: pre-wrap; font-family: monospace; margin-bottom: 14px; max-height: 300px; overflow-y: auto; }
+
+/* Login */
+.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content:: center; }
+.login-box { max-width: 380px; margin: 60px auto; padding: 0 20px; }
+.login-logo { font-size: 32px; font-weight: 800; color: #c8f04c; margin-bottom: 4px; }
+.login-sub { font-size: 13px; color: #666; margin-bottom: 32px; }
+.login-label { font-size: 12px; color: #888; margin-bottom: 6px; }
+.login-select { width: 100%; background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 10px; color: #f0f0f0; font-family: inherit; font-size: 15px; padding: 13px; outline: none; margin-bottom: 14px; appearance: none; }
+.login-select:focus { border-color: #c8f04c44; }
+
+/* Error */
+.err { background: #1a0a0a; border: 1px solid #ff525244; color: #ff8080; padding: 12px; border-radius: 10px; font-size: 13px; margin-bottom: 12px; display: none; }
+
+/* Bottom action */
+.bottom-action { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(15,15,15,0.97); border-top: 1px solid #1e1e1e; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); max-width: 480px; margin: 0 auto; }
+
+/* Visit summary chips */
+.visit-chip { display: flex; justify-content: space-between; align-items: center; padding: 10px 13px; background: #1e1e1e; border-radius: 10px; margin-bottom: 8px; }
+.visit-chip .vc-left { font-size: 13px; font-weight: 500; }
+.visit-chip .vc-right { font-size: 12px; color: #888; }
+.visit-chip.has-miss .vc-right { color: #ff5252; }
+</style>
+</head>
+<body>
+
+<!-- SCREEN 1: LOGIN -->
+<div class="screen active" id="s-login">
+  <div class="login-box">
+    <div class="login-logo">Kenko1st</div>
+    <div class="login-sub">Field Sales Tool</div>
+
+    <div class="login-label">Rep Name</div>
+    <select class="login-select" id="rep-select">
+      <option value="">-- Select Rep --</option>
+      <option value="Shard">Shard</option>
+    </select>
+
+    <div class="login-label">Store</div>
+    <select class="login-select" id="store-select">
+      <option value="">-- Select Store --</option>
+      <option>Spar Kalubovila</option>
+      <option>Spar Thalawathugoda</option>
+      <option>Spar Pepilitana</option>
+      <option>Healthguard Pharmacy</option>
+      <option>Jeewaka Pharmacy</option>
+    </select>
+
+    <div class="err" id="login-err">Rep සහ Store select කරන්න</div>
+    <button class="btn-full btn-green" onclick="startVisit()">Visit Start කරන්න →</button>
+
+    <div style="margin-top:20px;border-top:1px solid #1e1e1e;padding-top:16px;">
+      <div style="font-size:12px;color:#555;margin-bottom:10px;">⚙ Stores Manage කරන්න</div>
+      <button class="btn-full btn-dark" onclick="goTo('s-manage')" style="font-size:13px;padding:11px;">+ Add / Remove Stores</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 2: SECTION SELECT -->
+<div class="screen" id="s-sections">
+  <div class="top-bar">
+    <div>
+      <h1 id="visit-store-name">Store</h1>
+      <div class="sub" id="visit-meta"></div>
+    </div>
+    <button class="back-btn" onclick="goTo('s-login')">← Back</button>
+  </div>
+
+  <div style="font-size:13px;color:#888;margin-bottom:14px;">Shelf sections scan කරන්න:</div>
+
+  <div class="section-grid" id="section-grid">
+    <!-- generated -->
+  </div>
+
+  <button class="btn-full btn-green" id="finish-visit-btn" onclick="goFinish()" style="margin-top:8px;">
+    ✅ Visit Complete කරන්න
+  </button>
+</div>
+
+<!-- SCREEN 3: SCAN -->
+<div class="screen" id="s-scan">
+  <div class="top-bar">
+    <div>
+      <h1 id="scan-section-name">Section</h1>
+      <div class="sub" id="scan-store-sub"></div>
+    </div>
+    <button class="back-btn" onclick="goTo('s-sections')">← Back</button>
+  </div>
+
+  <div class="upload-area" id="scan-upload-btn">
+    <div class="icon">📷</div>
+    <p>Photos Select කරන්න</p>
+    <small>Select කළාම auto scan වෙනවා</small>
+  </div>
+  <input type="file" id="scan-file-input" multiple accept="image/*" style="display:none;">
+
+  <div class="preview-row" id="scan-previews"></div>
+
+  <div class="loading" id="scan-loading">
+    <div class="spinner"></div>
+    <p>Scanning...</p>
+  </div>
+
+  <div class="err" id="scan-err"></div>
+
+  <div id="scan-results" style="display:none;">
+    <div class="sum-bar">
+      <div class="sum-box"><div class="sum-n" id="sr-total" style="color:#f0f0f0;">0</div><div class="sum-l">Total</div></div>
+      <div class="sum-box"><div class="sum-n" id="sr-ok" style="color:#4caf50;">0</div><div class="sum-l">ඇත</div></div>
+      <div class="sum-box"><div class="sum-n" id="sr-miss" style="color:#ff5252;">0</div><div class="sum-l">නැත</div></div>
+    </div>
+    <div id="sr-list"></div>
+
+    <div style="margin-top:14px;">
+      <div style="font-size:12px;color:#888;margin-bottom:6px;">Notes</div>
+      <textarea class="notes-input" id="section-notes" rows="3" placeholder="Extra notes..."></textarea>
+    </div>
+
+    <button class="btn-full btn-green" onclick="saveSection()" style="margin-top:12px;">
+      ✅ Section Save කරන්න
+    </button>
+  </div>
+</div>
+
+<!-- SCREEN 4: FINISH / REPORT -->
+<div class="screen" id="s-finish">
+  <div class="top-bar">
+    <div>
+      <h1>Visit Summary</h1>
+      <div class="sub" id="finish-meta"></div>
+    </div>
+    <button class="back-btn" onclick="goTo('s-sections')">← Back</button>
+  </div>
+
+  <div id="finish-chips"></div>
+
+  <div style="margin:16px 0 8px;font-size:12px;color:#888;">WhatsApp Report Preview</div>
+  <div class="report-box" id="report-preview"></div>
+
+  <button class="btn-full btn-green" onclick="shareReport()">📤 Submit & WhatsApp Share</button>
+  <button class="btn-full btn-dark" onclick="copyReport()">📋 Copy Report</button>
+  <button class="btn-full btn-red" onclick="newVisit()">🔄 New Visit</button>
+</div>
+
+<!-- SCREEN 5: MANAGE STORES -->
+<div class="screen" id="s-manage">
+  <div class="top-bar">
+    <h1>Stores</h1>
+    <button class="back-btn" onclick="goTo('s-login')">← Back</button>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-bottom:16px;">
+    <input type="text" id="new-store-input" placeholder="New store name..." style="flex:1;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:10px;color:#f0f0f0;font-family:inherit;font-size:14px;padding:11px;outline:none;">
+    <button onclick="addStore()" style="background:#c8f04c;color:#0f0f0f;border:none;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px;">Add</button>
+  </div>
+
+  <div id="store-list-manage"></div>
+</div>
+
+<script>
+const WORKER_URL = "https://odd-grass-0c29.kenko1st-pubudu.workers.dev";
+
+// ===== DATA =====
+// All products per store
+const STORE_LISTS = {
+  "Spar Kalubovila":      "spar",
+  "Spar Thalawathugoda":  "spar",
+  "Spar Pepilitana":      "spar",
+  "Healthguard Pharmacy": "healthguard",
+  "Jeewaka Pharmacy":     "jeewaka"
+};
+
+const ALL_ITEMS = {
+  // SPAR only
+  spar_only: [
+    { code: "4793001319515", name: "Burnt Cashew Nuts 100g" },
+    { code: "4793001319523", name: "Roasted Cashew Nut 100g" },
+    { code: "4793001319525", name: "Cashew Nut Salt & Pepper 100g" },
+    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
+    { code: "4793001555391", name: "Organic Roasted Peanuts 200g" },
+    { code: "4793001555407", name: "Quinoa Seed 200g" },
+    { code: "4793001555575", name: "Ceylon Cashew Devilled 75g" },
+    { code: "4793001555582", name: "Ceylon Cashew Burnt 75g" },
+    { code: "4793001555766", name: "Premium Nut Mix 75g" },
+    { code: "4793001555889", name: "Chocolate with Three Nuts 100g" },
+    { code: "4793001555896", name: "Roasted Seed and Nuts Snack 100g" },
+    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
+    { code: "4793001555926", name: "Nuts and Fruits 100g" },
+    { code: "4796033640042", name: "Cooking Cashewnut 200g" },
+    { code: "8906115380161", name: "Oven Cashewnut 100g" },
+    { code: "9477359650603", name: "Kottamba Seeds 50g" },
+    { code: "9477359650625", name: "Dried Fruits Mix 100g" },
+  ],
+  // SPAR + Jeewaka
+  spar_jeewaka: [
+    { code: "4793001319517", name: "Cashew Nuts Chilli Garlic 100g" },
+    { code: "4793001319527", name: "Cashewnut Salt 100g" },
+    { code: "4793001319546", name: "Little Ts Kithul Peanuts 100g" },
+    { code: "4793001555025", name: "Hazel Nut 85g" },
+    { code: "4793001555056", name: "Sunflower Seed 100g" },
+    { code: "4793001555360", name: "Almond 100g" },
+  ],
+  // SPAR + Healthguard
+  spar_healthguard: [
+    { code: "4793001319529", name: "Cashew Nuts Sugar Coated 100g" },
+    { code: "4793001319591", name: "Little Ts Deviled Peanuts 125g" },
+    { code: "4793001319697", name: "Devilled Cashew Nut 100g" },
+    { code: "4793001555049", name: "Chia Seeds 100g" },
+    { code: "4793001555353", name: "Pistachio 85g" },
+    { code: "4793001555377", name: "Flax Seed 100g" },
+    { code: "4793001555414", name: "Walnut 85g" },
+    { code: "4793001555858", name: "Brain Booster 100g" },
+  ],
+  // All 3 stores
+  all_stores: [
+    { code: "4793001555032", name: "Basil Seed 100g" },
+    { code: "4793001555254", name: "Almond 45g" },
+  ],
+  // SPAR + both pharmacies (jeewaka only extra)
+  jeewaka_only_extra: [
+    { code: "4793001319517", name: "Cashew Nuts Chilli Garlic 100g" }, // already in spar_jeewaka
+  ]
+};
+
+// Exact store lists from Excel
+const STORE_ITEMS = {
+  spar: [
+    { code: "4793001319515", name: "Burnt Cashew Nuts 100g" },
+    { code: "4793001319517", name: "Cashew Nuts Chilli Garlic 100g" },
+    { code: "4793001319523", name: "Roasted Cashew Nut 100g" },
+    { code: "4793001319525", name: "Cashew Nut Salt & Pepper 100g" },
+    { code: "4793001319527", name: "Cashewnut Salt 100g" },
+    { code: "4793001319529", name: "Cashew Nuts Sugar Coated 100g" },
+    { code: "4793001319546", name: "Little Ts Kithul Peanuts 100g" },
+    { code: "4793001319591", name: "Little Ts Deviled Peanuts 125g" },
+    { code: "4793001319697", name: "Devilled Cashew Nut 100g" },
+    { code: "4793001555025", name: "Hazel Nut 85g" },
+    { code: "4793001555032", name: "Basil Seed 100g" },
+    { code: "4793001555049", name: "Chia Seeds 100g" },
+    { code: "4793001555056", name: "Sunflower Seed 100g" },
+    { code: "4793001555254", name: "Almond 45g" },
+    { code: "4793001555353", name: "Pistachio 85g" },
+    { code: "4793001555360", name: "Almond 100g" },
+    { code: "4793001555377", name: "Flax Seed 100g" },
+    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
+    { code: "4793001555391", name: "Organic Roasted Peanuts 200g" },
+    { code: "4793001555407", name: "Quinoa Seed 200g" },
+    { code: "4793001555414", name: "Walnut 85g" },
+    { code: "4793001555575", name: "Ceylon Cashew Devilled 75g" },
+    { code: "4793001555582", name: "Ceylon Cashew Burnt 75g" },
+    { code: "4793001555766", name: "Premium Nut Mix 75g" },
+    { code: "4793001555858", name: "Brain Booster 100g" },
+    { code: "4793001555889", name: "Chocolate with Three Nuts 100g" },
+    { code: "4793001555896", name: "Roasted Seed and Nuts Snack 100g" },
+    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
+    { code: "4793001555926", name: "Nuts and Fruits 100g" },
+    { code: "4796033640042", name: "Cooking Cashewnut 200g" },
+    { code: "8906115380161", name: "Oven Cashewnut 100g" },
+    { code: "9477359650603", name: "Kottamba Seeds 50g" },
+    { code: "9477359650625", name: "Dried Fruits Mix 100g" },
+  ],
+  healthguard: [
+    { code: "4793001319529", name: "Cashew Nuts Sugar Coated 100g" },
+    { code: "4793001319591", name: "Little Ts Deviled Peanuts 125g" },
+    { code: "4793001319697", name: "Devilled Cashew Nut 100g" },
+    { code: "4793001555032", name: "Basil Seed 100g" },
+    { code: "4793001555049", name: "Chia Seeds 100g" },
+    { code: "4793001555254", name: "Almond 45g" },
+    { code: "4793001555353", name: "Pistachio 85g" },
+    { code: "4793001555377", name: "Flax Seed 100g" },
+    { code: "4793001555414", name: "Walnut 85g" },
+    { code: "4793001555858", name: "Brain Booster 100g" },
+  ],
+  jeewaka: [
+    { code: "4793001319517", name: "Cashew Nuts Chilli Garlic 100g" },
+    { code: "4793001319527", name: "Cashewnut Salt 100g" },
+    { code: "4793001319546", name: "Little Ts Kithul Peanuts 100g" },
+    { code: "4793001555025", name: "Hazel Nut 85g" },
+    { code: "4793001555032", name: "Basil Seed 100g" },
+    { code: "4793001555056", name: "Sunflower Seed 100g" },
+    { code: "4793001555254", name: "Almond 45g" },
+    { code: "4793001555360", name: "Almond 100g" },
+  ]
+};
+
+function getStoreItems(storeName) {
+  const type = STORE_LISTS[storeName] || 'spar';
+  return STORE_ITEMS[type] || STORE_ITEMS.spar;
+}
+
+// Build sections dynamically based on store items
+function buildSectionsData(storeName) {
+  const allItems = getStoreItems(storeName);
+  const cashewCodes = new Set(['4793001319515','4793001319517','4793001319523','4793001319525','4793001319527','4793001319529','4793001319697','4793001555575','4793001555582','4796033640042','8906115380161']);
+  const littletsCodes = new Set(['4793001319546','4793001319591']);
+
+  const cashews = allItems.filter(p => cashewCodes.has(p.code));
+  // Little Ts merged into cashew section
+  const littlets = allItems.filter(p => littletsCodes.has(p.code));
+  const nuts = allItems.filter(p => !cashewCodes.has(p.code) && !littletsCodes.has(p.code));
+
+  const sections = {};
+  if (nuts.length) sections.nuts = { icon: "🥜", label: "Nuts & Seeds", items: nuts };
+  if (cashews.length || littlets.length) sections.cashew = { icon: "🫘", label: "Cashew & Peanuts", items: [...cashews, ...littlets] };
+  return sections;
+}
+
+let SECTIONS_DATA = {};
+
+// ===== STATE =====
+let currentRep = '';
+let currentStore = '';
+let visitStart = null;
+let visitData = {}; // { sectionKey: { ok, missing, notes } }
+let scanFiles = [];
+let scanSection = '';
+let scanState = { ok: [], unverified: [], confirmed: new Set() };
+
+// Stores (localStorage)
+let stores = JSON.parse(localStorage.getItem('kenko_stores') || '[]');
+if (!stores.length) {
+  stores = ['Spar Kalubovila','Spar Thalawathugoda','Spar Pepilitana','Healthguard Pharmacy','Jeewaka Pharmacy'];
+  saveStores();
+}
+
+function saveStores() { localStorage.setItem('kenko_stores', JSON.stringify(stores)); }
+
+// ===== NAVIGATION =====
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+  if (id === 's-manage') renderStoreManage();
+  if (id === 's-login') populateStoreSelect();
+}
+
+// ===== LOGIN =====
+function populateStoreSelect() {
+  const sel = document.getElementById('store-select');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">-- Select Store --</option>';
+  stores.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s; o.textContent = s;
+    if (s === current) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
+function startVisit() {
+  const rep = document.getElementById('rep-select').value;
+  const store = document.getElementById('store-select').value;
+  const errEl = document.getElementById('login-err');
+  if (!rep || !store) { errEl.style.display = 'block'; return; }
+  errEl.style.display = 'none';
+  currentRep = rep;
+  currentStore = store;
+  visitStart = new Date();
+  visitData = {};
+  SECTIONS_DATA = buildSectionsData(store);
+  buildSectionGrid();
+  document.getElementById('visit-store-name').textContent = store;
+  const storeType = STORE_LISTS[store] || 'spar';
+  const totalItems = getStoreItems(store).length;
+  document.getElementById('visit-meta').textContent = rep + ' · ' + fmtTime(visitStart) + ' · ' + totalItems + ' items';
+  goTo('s-sections');
+}
+
+function fmtTime(d) {
+  return d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+}
+
+// ===== SECTIONS =====
+function buildSectionGrid() {
+  const grid = document.getElementById('section-grid');
+  grid.innerHTML = '';
+  Object.entries(SECTIONS_DATA).forEach(([key, sec]) => {
+    const done = visitData[key];
+    const div = document.createElement('div');
+    div.className = 'sec-card' + (done ? ' done' : '');
+    div.id = 'sec-' + key;
+    div.innerHTML = `
+      ${done ? '<div class="done-badge">Done</div>' : ''}
+      <div class="sec-icon">${sec.icon}</div>
+      <div class="sec-name">${sec.label}</div>
+      <div class="sec-count">${sec.items.length} items${done ? ' · ' + done.missing.length + ' missing' : ''}</div>`;
+    div.onclick = () => openScan(key);
+    grid.appendChild(div);
+  });
+}
+
+// ===== SCAN =====
+function openScan(key) {
+  scanSection = key;
+  scanFiles = [];
+  scanState = { ok: [], unverified: [], confirmed: new Set() };
+  document.getElementById('scan-previews').innerHTML = '';
+  document.getElementById('scan-results').style.display = 'none';
+  document.getElementById('scan-err').style.display = 'none';
+  document.getElementById('scan-loading').style.display = 'none';
+  document.getElementById('section-notes').value = visitData[key]?.notes || '';
+  document.getElementById('scan-section-name').textContent = SECTIONS_DATA[key].label;
+  document.getElementById('scan-store-sub').textContent = currentStore;
+  goTo('s-scan');
+}
+
+document.getElementById('scan-upload-btn').addEventListener('click', function() {
+  document.getElementById('scan-file-input').click();
+});
+
+document.getElementById('scan-file-input').addEventListener('change', function() {
+  const files = Array.from(this.files);
+  if (!files.length) return;
+  scanFiles = [...scanFiles, ...files];
+  renderScanPreviews();
+  this.value = '';
+  doScan();
+});
+
+function renderScanPreviews() {
+  const row = document.getElementById('scan-previews');
+  row.innerHTML = '';
+  scanFiles.forEach((f, i) => {
+    const url = URL.createObjectURL(f);
+    const img = document.createElement('img');
+    img.src = url; img.className = 'thumb';
+    row.appendChild(img);
+  });
+}
+
+async function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+async function doScan() {
+  const loading = document.getElementById('scan-loading');
+  const err = document.getElementById('scan-err');
+  const results = document.getElementById('scan-results');
+  loading.style.display = 'block';
+  results.style.display = 'none';
+  err.style.display = 'none';
+
+  const sec = SECTIONS_DATA[scanSection];
+  const productNames = sec.items.map(p => p.name).join('\n');
+
+  try {
+    const images = [];
+    for (const file of scanFiles) {
+      const b64 = await toBase64(file);
+      images.push({ mime_type: file.type || 'image/jpeg', data: b64 });
+    }
+
+    const prompt = `You are analyzing supermarket shelf photos for a field sales audit.
+
+ONLY read text from product PACKAGING (bags, pouches) — completely IGNORE shelf price tags and labels.
+
+From this product list, identify which products you can see printed on actual product bags:
+${productNames}
+
+RULES:
+- Only mark "found" if you can read the product name on a bag/package
+- Do NOT use shelf tags to identify products
+- Do NOT guess
+
+Respond ONLY in JSON:
+{"found":["exact name from list"]}`;
+
+    const resp = await fetch(`${WORKER_URL}/scan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, images })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Worker error');
+
+    let text = (data.result || '').replace(/```json|```/g, '').trim();
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('Parse error');
+
+    const parsed = JSON.parse(match[0]);
+    const foundList = (parsed.found || []).map(n => n.toLowerCase());
+
+    function isMatch(p) {
+      const pName = p.name.toLowerCase().replace(/\d+g/g,'');
+      const pWords = pName.split(' ').filter(w => w.length > 3);
+      return foundList.some(fn => {
+        const fnClean = fn.replace(/\d+g/g,'');
+        const overlap = pWords.filter(w => fnClean.includes(w)).length;
+        return overlap >= 2 || pName.includes(fnClean) || fnClean.includes(pName);
+      });
+    }
+
+    scanState.ok = sec.items.filter(p => isMatch(p));
+    scanState.unverified = sec.items.filter(p => !isMatch(p));
+    scanState.confirmed = new Set();
+
+    renderScanResults();
+  } catch(e) {
+    err.style.display = 'block';
+    err.textContent = '⚠ ' + e.message;
+  } finally {
+    loading.style.display = 'none';
+  }
+}
+
+function renderScanResults() {
+  const confirmed = scanState.unverified.filter(p => scanState.confirmed.has(p.code));
+  const pending = scanState.unverified.filter(p => !scanState.confirmed.has(p.code));
+  const total = SECTIONS_DATA[scanSection].items.length;
+
+  document.getElementById('sr-total').textContent = total;
+  document.getElementById('sr-ok').textContent = scanState.ok.length;
+  document.getElementById('sr-miss').textContent = confirmed.length;
+  document.getElementById('scan-results').style.display = 'block';
+
+  const list = document.getElementById('sr-list');
+  const allItems = [...confirmed, ...pending, ...scanState.ok];
+  list.innerHTML = allItems.map(p => {
+    const isOk = scanState.ok.includes(p);
+    const isMiss = scanState.confirmed.has(p.code);
+    if (isOk) return `<div class="item-row ok"><div class="dot dot-ok"></div><div class="item-name">${p.name}</div><span style="font-size:11px;color:#4caf50;">ඇත</span></div>`;
+    if (isMiss) return `<div class="item-row miss"><div class="dot dot-miss"></div><div class="item-name">${p.name}</div><button class="miss-tap" onclick="toggleMiss('${p.code}')">නැත ✓</button></div>`;
+    return `<div class="item-row verify"><div class="dot dot-verify"></div><div class="item-name">${p.name}</div><button class="verify-tap" onclick="toggleMiss('${p.code}')">Verify?</button></div>`;
+  }).join('');
+}
+
+function toggleMiss(code) {
+  if (scanState.confirmed.has(code)) scanState.confirmed.delete(code);
+  else scanState.confirmed.add(code);
+  renderScanResults();
+}
+
+function saveSection() {
+  const missing = scanState.unverified.filter(p => scanState.confirmed.has(p.code));
+  visitData[scanSection] = {
+    ok: scanState.ok,
+    missing: missing,
+    notes: document.getElementById('section-notes').value.trim()
+  };
+  buildSectionGrid();
+  goTo('s-sections');
+  showToast(SECTIONS_DATA[scanSection].label + ' saved ✓');
+}
+
+// ===== FINISH =====
+function goFinish() {
+  const done = Object.keys(visitData).length;
+  if (!done) { showToast('අවම section එකක් scan කරන්න'); return; }
+
+  document.getElementById('finish-meta').textContent = currentRep + ' · ' + currentStore + ' · ' + fmtTime(visitStart);
+
+  // Chips
+  const chips = document.getElementById('finish-chips');
+  chips.innerHTML = Object.entries(SECTIONS_DATA).map(([key, sec]) => {
+    const d = visitData[key];
+    if (!d) return `<div class="visit-chip"><div class="vc-left">${sec.icon} ${sec.label}</div><div class="vc-right">Not scanned</div></div>`;
+    return `<div class="visit-chip ${d.missing.length ? 'has-miss' : ''}">
+      <div class="vc-left">${sec.icon} ${sec.label}</div>
+      <div class="vc-right">${d.missing.length ? '🔴 ' + d.missing.length + ' missing' : '✅ All OK'}</div>
+    </div>`;
+  }).join('');
+
+  // Report
+  document.getElementById('report-preview').textContent = buildReport();
+  goTo('s-finish');
+}
+
+function buildReport() {
+  const now = new Date();
+  let r = `🏪 KENKO1ST SHELF REPORT\n`;
+  r += `━━━━━━━━━━━━━━━━━━━━\n`;
+  r += `Store: ${currentStore}\n`;
+  r += `Rep: ${currentRep}\n`;
+  r += `Date: ${fmtTime(now)}\n`;
+  r += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+  let totalMiss = 0;
+  Object.entries(SECTIONS_DATA).forEach(([key, sec]) => {
+    const d = visitData[key];
+    r += `${sec.icon} ${sec.label.toUpperCase()}\n`;
+    if (!d) { r += `  ⏭ Not scanned\n\n`; return; }
+    if (d.missing.length === 0) { r += `  ✅ All items present\n\n`; return; }
+    totalMiss += d.missing.length;
+    r += `  🔴 Missing (${d.missing.length}):\n`;
+    d.missing.forEach(p => r += `  • ${p.name}\n`);
+    if (d.notes) r += `  📝 ${d.notes}\n`;
+    r += '\n';
+  });
+
+  r += `━━━━━━━━━━━━━━━━━━━━\n`;
+  r += `Total Missing: ${totalMiss} items\n`;
+  r += `Status: ${totalMiss === 0 ? '✅ FULL STOCK' : '⚠ ACTION REQUIRED'}`;
+  return r;
+}
+
+async function submitVisit() {
+  try {
+    const resp = await fetch(`${WORKER_URL}/save-visit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rep: currentRep, store: currentStore, visitStart: visitStart.toISOString(), visitData })
+    });
+    const data = await resp.json();
+    if (data.success) showToast('✅ Manager dashboard එකට submit කළා!');
+    else showToast('⚠ Submit error: ' + (data.error || 'unknown'));
+  } catch(e) {
+    showToast('⚠ Submit failed: ' + e.message);
+  }
+}
+
+function shareReport() {
+  submitVisit(); // Auto submit to manager dashboard
+  const text = buildReport();
+  if (navigator.share) navigator.share({ title: 'Kenko1st Report', text });
+  else { copyReport(); showToast('Copied — WhatsApp paste කරන්න'); }
+}
+
+function copyReport() {
+  const text = buildReport();
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => showToast('Report copied ✓'));
+  else { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); showToast('Copied ✓'); }
+}
+
+function newVisit() {
+  visitData = {};
+  goTo('s-login');
+  populateStoreSelect();
+}
+
+// ===== MANAGE STORES =====
+function renderStoreManage() {
+  const list = document.getElementById('store-list-manage');
+  list.innerHTML = stores.map((s, i) => `
+    <div class="visit-chip">
+      <div class="vc-left">🏪 ${s}</div>
+      <button onclick="removeStore(${i})" style="background:rgba(255,82,82,0.12);color:#ff5252;border:none;padding:5px 10px;border-radius:8px;font-size:12px;cursor:pointer;">Remove</button>
+    </div>`).join('');
+}
+
+function addStore() {
+  const inp = document.getElementById('new-store-input');
+  const name = inp.value.trim();
+  if (!name) return;
+  stores.push(name);
+  saveStores();
+  inp.value = '';
+  renderStoreManage();
+  populateStoreSelect();
+  showToast(name + ' added ✓');
+}
+
+function removeStore(i) {
+  stores.splice(i, 1);
+  saveStores();
+  renderStoreManage();
+  populateStoreSelect();
+}
+
+// goTo already handles extra logic above
+
+// ===== TOAST =====
+function showToast(msg) {
+  const t = document.getElementById('toast-el');
+  t.textContent = msg;
+  t.style.opacity = '1';
+  t.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(10px)'; }, 2500);
+}
+
+// Init
+populateStoreSelect();
+</script>
+
+<div id="toast-el" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:#333;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;opacity:0;transition:all 0.25s;pointer-events:none;white-space:nowrap;z-index:999;"></div>
+</body>
+</html>
