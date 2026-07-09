@@ -67,6 +67,30 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .verify-tap { font-size: 11px; background: rgba(255,235,59,0.12); color: #ffeb3b; border: none; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-family: inherit; }
 .miss-tap { font-size: 11px; background: rgba(255,82,82,0.12); color: #ff5252; border: none; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-family: inherit; }
 
+/* Qty stepper + expiry */
+.qty-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.qty-row .q-lbl { font-size: 11px; color: #666; }
+.q-btn { width: 26px; height: 26px; border-radius: 7px; border: 1px solid #333; background: #161616; color: #aaa; font-size: 15px; cursor: pointer; font-family: inherit; line-height: 1; }
+.q-val { font-size: 13px; font-weight: 700; color: #f0f0f0; min-width: 20px; text-align: center; }
+.st-btn.exp { font-size: 12px; }
+.st-btn.on-exp { background: rgba(255,140,0,0.16); color: #ff8c00; border-color: #ff8c0066; }
+.pending-badge { background: rgba(255,193,7,0.12); border: 1px solid #ffc10744; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #ffc107; margin-bottom: 14px; display: none; cursor: pointer; }
+.hist-card { background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+.hist-card .h-store { font-size: 14px; font-weight: 700; }
+.hist-card .h-meta { font-size: 11px; color: #666; margin-top: 3px; }
+.hist-card .h-stats { font-size: 12px; margin-top: 6px; display: flex; gap: 12px; }
+.hist-card pre { display: none; white-space: pre-wrap; font-size: 11px; color: #999; background: #161616; border-radius: 8px; padding: 10px; margin-top: 10px; font-family: 'SF Mono', Menlo, monospace; }
+.hist-card.open pre { display: block; }
+
+/* Status buttons */
+.item-row.low { border-color: rgba(255,193,7,0.25); background: rgba(255,193,7,0.05); }
+.st-btns { display: flex; gap: 4px; flex-shrink: 0; }
+.st-btn { font-size: 11px; padding: 6px 9px; border-radius: 7px; border: 1px solid #333; background: #161616; color: #777; cursor: pointer; font-family: inherit; font-weight: 600; }
+.st-btn.on-ok { background: rgba(76,175,80,0.18); color: #4caf50; border-color: #4caf5066; }
+.st-btn.on-low { background: rgba(255,193,7,0.16); color: #ffc107; border-color: #ffc10766; }
+.st-btn.on-miss { background: rgba(255,82,82,0.16); color: #ff5252; border-color: #ff525266; }
+.sum-bar4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+
 /* Summary bar */
 .sum-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
 .sum-box { background: #1e1e1e; border-radius: 10px; padding: 12px 8px; text-align: center; }
@@ -92,7 +116,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .report-box { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 16px; font-size: 13px; line-height: 1.8; color: #ccc; white-space: pre-wrap; font-family: monospace; margin-bottom: 14px; max-height: 300px; overflow-y: auto; }
 
 /* Login */
-.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content:: center; }
+.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
 .login-box { max-width: 380px; margin: 60px auto; padding: 0 20px; }
 .login-logo { font-size: 32px; font-weight: 800; color: #c8f04c; margin-bottom: 4px; }
 .login-sub { font-size: 13px; color: #666; margin-bottom: 32px; }
@@ -137,80 +161,70 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <option>Jeewaka Pharmacy</option>
     </select>
 
+    <div class="login-label">Location <span style="color:#555;">(optional — type කරන්න)</span></div>
+    <input type="text" class="login-select" id="store-location" placeholder="උදා: Kalubovila, Thalawathugoda..." autocomplete="off">
+
     <div class="err" id="login-err">Rep සහ Store select කරන්න</div>
+
+    <div class="pending-badge" id="pending-badge" onclick="flushPending(true)"></div>
+
     <button class="btn-full btn-green" onclick="startVisit()">Visit Start කරන්න →</button>
 
     <div style="margin-top:20px;border-top:1px solid #1e1e1e;padding-top:16px;">
       <div style="font-size:12px;color:#555;margin-bottom:10px;">⚙ Stores Manage කරන්න</div>
       <button class="btn-full btn-dark" onclick="goTo('s-manage')" style="font-size:13px;padding:11px;">+ Add / Remove Stores</button>
+      <button class="btn-full btn-dark" onclick="goTo('s-history')" style="font-size:13px;padding:11px;">📖 My Visit History</button>
     </div>
   </div>
 </div>
 
-<!-- SCREEN 2: SECTION SELECT -->
-<div class="screen" id="s-sections">
+<!-- SCREEN 2: ITEM CHECKLIST -->
+<div class="screen" id="s-checklist">
   <div class="top-bar">
     <div>
       <h1 id="visit-store-name">Store</h1>
       <div class="sub" id="visit-meta"></div>
+      <div class="sub" id="visit-gps" style="color:#4caf50;"></div>
     </div>
     <button class="back-btn" onclick="goTo('s-login')">← Back</button>
   </div>
 
-  <div style="font-size:13px;color:#888;margin-bottom:14px;">Shelf sections scan කරන්න:</div>
-
-  <div class="section-grid" id="section-grid">
-    <!-- generated -->
-  </div>
-
-  <button class="btn-full btn-green" id="finish-visit-btn" onclick="goFinish()" style="margin-top:8px;">
-    ✅ Visit Complete කරන්න
-  </button>
-</div>
-
-<!-- SCREEN 3: SCAN -->
-<div class="screen" id="s-scan">
-  <div class="top-bar">
-    <div>
-      <h1 id="scan-section-name">Section</h1>
-      <div class="sub" id="scan-store-sub"></div>
-    </div>
-    <button class="back-btn" onclick="goTo('s-sections')">← Back</button>
-  </div>
-
   <div class="upload-area" id="scan-upload-btn">
     <div class="icon">📷</div>
-    <p>Photos Select කරන්න</p>
-    <small>Select කළාම auto scan වෙනවා</small>
+    <p>Shelf Photos Scan කරන්න (optional)</p>
+    <small>Photo එකේ පේන items auto "ඇත" mark වෙනවා</small>
   </div>
   <input type="file" id="scan-file-input" multiple accept="image/*" style="display:none;">
-
   <div class="preview-row" id="scan-previews"></div>
 
   <div class="loading" id="scan-loading">
     <div class="spinner"></div>
     <p>Scanning...</p>
   </div>
-
   <div class="err" id="scan-err"></div>
 
-  <div id="scan-results" style="display:none;">
-    <div class="sum-bar">
-      <div class="sum-box"><div class="sum-n" id="sr-total" style="color:#f0f0f0;">0</div><div class="sum-l">Total</div></div>
-      <div class="sum-box"><div class="sum-n" id="sr-ok" style="color:#4caf50;">0</div><div class="sum-l">ඇත</div></div>
-      <div class="sum-box"><div class="sum-n" id="sr-miss" style="color:#ff5252;">0</div><div class="sum-l">නැත</div></div>
-    </div>
-    <div id="sr-list"></div>
-
-    <div style="margin-top:14px;">
-      <div style="font-size:12px;color:#888;margin-bottom:6px;">Notes</div>
-      <textarea class="notes-input" id="section-notes" rows="3" placeholder="Extra notes..."></textarea>
-    </div>
-
-    <button class="btn-full btn-green" onclick="saveSection()" style="margin-top:12px;">
-      ✅ Section Save කරන්න
-    </button>
+  <div class="sum-bar4">
+    <div class="sum-box"><div class="sum-n" id="c-total" style="color:#f0f0f0;">0</div><div class="sum-l">Total</div></div>
+    <div class="sum-box"><div class="sum-n" id="c-ok" style="color:#4caf50;">0</div><div class="sum-l">ඇත</div></div>
+    <div class="sum-box"><div class="sum-n" id="c-low" style="color:#ffc107;">0</div><div class="sum-l">Low</div></div>
+    <div class="sum-box"><div class="sum-n" id="c-miss" style="color:#ff5252;">0</div><div class="sum-l">නැත</div></div>
   </div>
+
+  <div id="check-list"></div>
+
+  <div style="margin-top:14px;">
+    <div style="font-size:12px;color:#888;margin-bottom:6px;">Notes</div>
+    <textarea class="notes-input" id="visit-notes" rows="3" placeholder="Extra notes..."></textarea>
+  </div>
+
+  <div style="margin-top:12px;">
+    <div style="font-size:12px;color:#888;margin-bottom:6px;">🏷 Competitor Brands <span style="color:#555;">(shelf එකේ තියෙන වෙන brands)</span></div>
+    <textarea class="notes-input" id="visit-competitor" rows="2" placeholder="උදා: Nature's Bite cashew 3 facings, XYZ almonds..."></textarea>
+  </div>
+
+  <button class="btn-full btn-green" onclick="goFinish()" style="margin-top:14px;">
+    ✅ Visit Complete කරන්න
+  </button>
 </div>
 
 <!-- SCREEN 4: FINISH / REPORT -->
@@ -220,7 +234,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <h1>Visit Summary</h1>
       <div class="sub" id="finish-meta"></div>
     </div>
-    <button class="back-btn" onclick="goTo('s-sections')">← Back</button>
+    <button class="back-btn" onclick="goTo('s-checklist')">← Back</button>
   </div>
 
   <div id="finish-chips"></div>
@@ -233,6 +247,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <button class="btn-full btn-red" onclick="newVisit()">🔄 New Visit</button>
 </div>
 
+<!-- SCREEN: VISIT HISTORY -->
+<div class="screen" id="s-history">
+  <div class="top-bar">
+    <h1>My Visits</h1>
+    <button class="back-btn" onclick="goTo('s-login')">← Back</button>
+  </div>
+  <div id="history-list"></div>
+</div>
+
 <!-- SCREEN 5: MANAGE STORES -->
 <div class="screen" id="s-manage">
   <div class="top-bar">
@@ -240,9 +263,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <button class="back-btn" onclick="goTo('s-login')">← Back</button>
   </div>
 
-  <div style="display:flex;gap:8px;margin-bottom:16px;">
-    <input type="text" id="new-store-input" placeholder="New store name..." style="flex:1;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:10px;color:#f0f0f0;font-family:inherit;font-size:14px;padding:11px;outline:none;">
-    <button onclick="addStore()" style="background:#c8f04c;color:#0f0f0f;border:none;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px;">Add</button>
+  <div style="margin-bottom:16px;">
+    <input type="text" id="new-store-input" placeholder="New store name..." style="width:100%;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:10px;color:#f0f0f0;font-family:inherit;font-size:14px;padding:11px;outline:none;margin-bottom:8px;">
+    <div style="display:flex;gap:8px;">
+      <select id="new-store-type" style="flex:1;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:10px;color:#f0f0f0;font-family:inherit;font-size:14px;padding:11px;outline:none;appearance:none;"></select>
+      <button onclick="addStore()" style="background:#c8f04c;color:#0f0f0f;border:none;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px;">Add</button>
+    </div>
+    <div style="font-size:11px;color:#555;margin-top:6px;">Product list type එක select කරන්න — ඒ list එකේ items තමයි scan වෙන්නේ</div>
   </div>
 
   <div id="store-list-manage"></div>
@@ -252,169 +279,319 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 const WORKER_URL = "https://odd-grass-0c29.kenko1st-pubudu.workers.dev";
 
 // ===== DATA =====
-// All products per store
-const STORE_LISTS = {
-  "Spar Kalubovila":      "spar",
-  "Spar Thalawathugoda":  "spar",
-  "Spar Pepilitana":      "spar",
+// Outlet list types (list type key -> display label)
+const LIST_TYPES = {
+  spar:        "Spar",
+  healthguard: "Healthguard",
+  jeewaka:     "Jeewaka",
+  kandy:       "Kandy",
+  cfc:         "CFC",
+  ovita:       "Ovita",
+  parkstreet:  "Park Street",
+  uptown:      "Uptown",
+  nw:          "NW",
+  shade:       "Shade",
+  mawella:     "Mawella",
+  diligez:     "Diligez"
+};
+
+// Default outlets (store name -> list type)
+const DEFAULT_STORE_TYPES = {
+  "Spar":                 "spar",
   "Healthguard Pharmacy": "healthguard",
-  "Jeewaka Pharmacy":     "jeewaka"
+  "Jeewaka Pharmacy":     "jeewaka",
+  "Kandy":                "kandy",
+  "CFC":                  "cfc",
+  "Ovita":                "ovita",
+  "Park Street":          "parkstreet",
+  "Uptown":               "uptown",
+  "NW":                   "nw",
+  "Shade":                "shade",
+  "Mawella":              "mawella",
+  "Diligez":              "diligez"
 };
 
-const ALL_ITEMS = {
-  // SPAR only
-  spar_only: [
-    { code: "4793001319515", name: "Burnt Cashew Nuts 100g" },
-    { code: "4793001319523", name: "Roasted Cashew Nut 100g" },
-    { code: "4793001319525", name: "Cashew Nut Salt & Pepper 100g" },
-    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
-    { code: "4793001555391", name: "Organic Roasted Peanuts 200g" },
-    { code: "4793001555407", name: "Quinoa Seed 200g" },
-    { code: "4793001555575", name: "Ceylon Cashew Devilled 75g" },
-    { code: "4793001555582", name: "Ceylon Cashew Burnt 75g" },
-    { code: "4793001555766", name: "Premium Nut Mix 75g" },
-    { code: "4793001555889", name: "Chocolate with Three Nuts 100g" },
-    { code: "4793001555896", name: "Roasted Seed and Nuts Snack 100g" },
-    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
-    { code: "4793001555926", name: "Nuts and Fruits 100g" },
-    { code: "4796033640042", name: "Cooking Cashewnut 200g" },
-    { code: "8906115380161", name: "Oven Cashewnut 100g" },
-    { code: "9477359650603", name: "Kottamba Seeds 50g" },
-    { code: "9477359650625", name: "Dried Fruits Mix 100g" },
-  ],
-  // SPAR + Jeewaka
-  spar_jeewaka: [
-    { code: "4793001319517", name: "Cashew Nuts Chilli Garlic 100g" },
-    { code: "4793001319527", name: "Cashewnut Salt 100g" },
-    { code: "4793001319546", name: "Little Ts Kithul Peanuts 100g" },
-    { code: "4793001555025", name: "Hazel Nut 85g" },
-    { code: "4793001555056", name: "Sunflower Seed 100g" },
-    { code: "4793001555360", name: "Almond 100g" },
-  ],
-  // SPAR + Healthguard
-  spar_healthguard: [
-    { code: "4793001319529", name: "Cashew Nuts Sugar Coated 100g" },
-    { code: "4793001319591", name: "Little Ts Deviled Peanuts 125g" },
-    { code: "4793001319697", name: "Devilled Cashew Nut 100g" },
-    { code: "4793001555049", name: "Chia Seeds 100g" },
-    { code: "4793001555353", name: "Pistachio 85g" },
-    { code: "4793001555377", name: "Flax Seed 100g" },
-    { code: "4793001555414", name: "Walnut 85g" },
-    { code: "4793001555858", name: "Brain Booster 100g" },
-  ],
-  // All 3 stores
-  all_stores: [
-    { code: "4793001555032", name: "Basil Seed 100g" },
-    { code: "4793001555254", name: "Almond 45g" },
-  ],
-  // SPAR + both pharmacies (jeewaka only extra)
-  jeewaka_only_extra: [
-    { code: "4793001319517", name: "Cashew Nuts Chilli Garlic 100g" }, // already in spar_jeewaka
-  ]
-};
-
-// Exact store lists from Excel
+// Product lists per outlet type (from out_lat_list.xlsx)
 const STORE_ITEMS = {
   spar: [
-    { code: "4793001319515", name: "Burnt Cashew Nuts 100g" },
-    { code: "4793001319517", name: "Cashew Nuts Chilli Garlic 100g" },
-    { code: "4793001319523", name: "Roasted Cashew Nut 100g" },
-    { code: "4793001319525", name: "Cashew Nut Salt & Pepper 100g" },
-    { code: "4793001319527", name: "Cashewnut Salt 100g" },
-    { code: "4793001319529", name: "Cashew Nuts Sugar Coated 100g" },
-    { code: "4793001319546", name: "Little Ts Kithul Peanuts 100g" },
-    { code: "4793001319591", name: "Little Ts Deviled Peanuts 125g" },
-    { code: "4793001319697", name: "Devilled Cashew Nut 100g" },
-    { code: "4793001555025", name: "Hazel Nut 85g" },
-    { code: "4793001555032", name: "Basil Seed 100g" },
-    { code: "4793001555049", name: "Chia Seeds 100g" },
-    { code: "4793001555056", name: "Sunflower Seed 100g" },
-    { code: "4793001555254", name: "Almond 45g" },
-    { code: "4793001555353", name: "Pistachio 85g" },
-    { code: "4793001555360", name: "Almond 100g" },
+    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
+    { code: "4793001555858", name: "Brain Booster 100g" },
+    { code: "4793001555926", name: "Nut & Fruits Mix 100g" },
+    { code: "4793001555896", name: "Roasted Seed And Nuts Snack 100g" },
     { code: "4793001555377", name: "Flax Seed 100g" },
     { code: "4793001555384", name: "Pumpkin Seeds 100g" },
-    { code: "4793001555391", name: "Organic Roasted Peanuts 200g" },
-    { code: "4793001555407", name: "Quinoa Seed 200g" },
+    { code: "4796033640011", name: "Dried Golden Raisins 100g" },
+    { code: "4793001555490", name: "Dried Plums 100g" },
+    { code: "4793001555704", name: "Nut & Fruits Mix 50g" },
+    { code: "4793001555766", name: "Premium Three Nuts 75g" },
+    { code: "6103738486209", name: "Ceylon Cashew Roasted 75g" },
+    { code: "4793001555483", name: "Blueberry 85g" },
     { code: "4793001555414", name: "Walnut 85g" },
-    { code: "4793001555575", name: "Ceylon Cashew Devilled 75g" },
+    { code: "4793001555353", name: "Pistachio 85g" },
     { code: "4793001555582", name: "Ceylon Cashew Burnt 75g" },
-    { code: "4793001555766", name: "Premium Nut Mix 75g" },
-    { code: "4793001555858", name: "Brain Booster 100g" },
-    { code: "4793001555889", name: "Chocolate with Three Nuts 100g" },
-    { code: "4793001555896", name: "Roasted Seed and Nuts Snack 100g" },
-    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
-    { code: "4793001555926", name: "Nuts and Fruits 100g" },
-    { code: "4796033640042", name: "Cooking Cashewnut 200g" },
-    { code: "8906115380161", name: "Oven Cashewnut 100g" },
-    { code: "9477359650603", name: "Kottamba Seeds 50g" },
-    { code: "9477359650625", name: "Dried Fruits Mix 100g" },
+    { code: "4793001555360", name: "Almond 100g" },
+    { code: "4793001555254", name: "Almond 45g" },
+    { code: "4793001555889", name: "Chocolate With Three Nuts 100g" },
+    { code: "4793001555032", name: "Basil Seed 100g" },
+    { code: "4793001555391", name: "Organic Roasted Peanuts 200g" },
+    { code: "4793001555445", name: "Cranberries 100g" },
+    { code: "4793001555049", name: "Chia Seeds 100g" },
+    { code: "4793001555247", name: "Cranberries 45g" },
+    { code: "4793001555575", name: "Ceylon Cashew Devilled 75g" },
+    { code: "4793001555100", name: "Apricot 85g" },
   ],
   healthguard: [
-    { code: "4793001319529", name: "Cashew Nuts Sugar Coated 100g" },
-    { code: "4793001319591", name: "Little Ts Deviled Peanuts 125g" },
-    { code: "4793001319697", name: "Devilled Cashew Nut 100g" },
-    { code: "4793001555032", name: "Basil Seed 100g" },
-    { code: "4793001555049", name: "Chia Seeds 100g" },
-    { code: "4793001555254", name: "Almond 45g" },
-    { code: "4793001555353", name: "Pistachio 85g" },
-    { code: "4793001555377", name: "Flax Seed 100g" },
-    { code: "4793001555414", name: "Walnut 85g" },
     { code: "4793001555858", name: "Brain Booster 100g" },
+    { code: "4793001555049", name: "Chia Seeds 100g" },
+    { code: "4793001555445", name: "Cranberries 100g" },
+    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
+    { code: "4793001555926", name: "Nut & Fruits Mix 100g" },
+    { code: "4793001555872", name: "Psyllium Husk 100g" },
+    { code: "4793001555360", name: "Almond 100g" },
+    { code: "4793001555353", name: "Pistachio 85g" },
   ],
   jeewaka: [
-    { code: "4793001319517", name: "Cashew Nuts Chilli Garlic 100g" },
-    { code: "4793001319527", name: "Cashewnut Salt 100g" },
-    { code: "4793001319546", name: "Little Ts Kithul Peanuts 100g" },
-    { code: "4793001555025", name: "Hazel Nut 85g" },
-    { code: "4793001555032", name: "Basil Seed 100g" },
-    { code: "4793001555056", name: "Sunflower Seed 100g" },
-    { code: "4793001555254", name: "Almond 45g" },
+    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
     { code: "4793001555360", name: "Almond 100g" },
-  ]
+    { code: "4793001555049", name: "Chia Seeds 100g" },
+    { code: "4793001555582", name: "Ceylon Cashew Burnt 75g" },
+    { code: "4793001555445", name: "Cranberries 100g" },
+    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
+    { code: "4793001555889", name: "Chocolate With Three Nuts 100g" },
+    { code: "4793001555926", name: "Nut & Fruits Mix 100g" },
+    { code: "4793001555100", name: "Apricot 85g" },
+    { code: "4793001555483", name: "Blueberry 85g" },
+    { code: "4793001555414", name: "Walnut 85g" },
+  ],
+  kandy: [
+    { code: "4793001555360", name: "Almond 100g" },
+    { code: "4793001555100", name: "Apricot 85g" },
+    { code: "4793001555032", name: "Basil Seed 100g" },
+    { code: "4793001555063", name: "Black Raisins 100g" },
+    { code: "4793001555483", name: "Blueberry 85g" },
+    { code: "4793001555858", name: "Brain Booster 100g" },
+    { code: "4793001555582", name: "Ceylon Cashew Burnt 75g" },
+    { code: "4793001555575", name: "Ceylon Cashew Devilled 75g" },
+    { code: "6103738486209", name: "Ceylon Cashew Roasted 75g" },
+    { code: "4793001555049", name: "Chia Seeds 100g" },
+    { code: "4793001555889", name: "Chocolate With Three Nuts 100g" },
+    { code: "4793001555445", name: "Cranberries 100g" },
+    { code: "4793001555490", name: "Dried Plums 100g" },
+    { code: "4793001555377", name: "Flax Seed 100g" },
+    { code: "6103738486296", name: "Forest Bee Honey 460g" },
+    { code: "4793001555025", name: "Hazel Nut 85g" },
+    { code: "4793001555971", name: "Khalas Dates 200g" },
+    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
+    { code: "4793001555926", name: "Nut & Fruits Mix 100g" },
+    { code: "4793001555391", name: "Organic Roasted Peanuts 200g" },
+    { code: "4793001555353", name: "Pistachio 85g" },
+    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
+    { code: "4793001555896", name: "Roasted Seed And Nuts Snack 100g" },
+    { code: "4793001555056", name: "Sunflower Seed 100g" },
+    { code: "4793001555414", name: "Walnut 85g" },
+  ],
+  cfc: [
+    { code: "4793001555858", name: "Brain Booster 100g" },
+    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
+    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
+    { code: "4793001555926", name: "Nut & Fruits Mix 100g" },
+    { code: "4793001555414", name: "Walnut 85g" },
+    { code: "4793001555360", name: "Almond 100g" },
+    { code: "4793001555049", name: "Chia Seeds 100g" },
+    { code: "4793001555377", name: "Flax Seed 100g" },
+    { code: "4796033640134", name: "Green Sweet Stevia Powder 100g" },
+    { code: "4793001555889", name: "Chocolate With Three Nuts 100g" },
+    { code: "4793001555445", name: "Cranberries 100g" },
+  ],
+  ovita: [
+    { code: "4793001555360", name: "Almond 100g" },
+    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
+    { code: "4793001555858", name: "Brain Booster 100g" },
+    { code: "4793001555490", name: "Dried Plums 100g" },
+    { code: "4793001555414", name: "Walnut 85g" },
+    { code: "4793001555445", name: "Cranberries 100g" },
+    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
+    { code: "4793001555483", name: "Blueberry 85g" },
+    { code: "4793001555377", name: "Flax Seed 100g" },
+    { code: "4793001555063", name: "Black Raisins 100g" },
+    { code: "4793001555353", name: "Pistachio 85g" },
+    { code: "4793001555049", name: "Chia Seeds 100g" },
+    { code: "4793001555612", name: "Kurakkan Flour 300g" },
+    { code: "4793001555629", name: "Kithul Flour 200g" },
+    { code: "4793001555117", name: "White Sesame 200g" },
+    { code: "4793001319513", name: "Black Sesame Seed 100g" },
+    { code: "4793001555506", name: "Rice Flakes 150g" },
+    { code: "4793001555100", name: "Apricot 85g" },
+    { code: "4793001555766", name: "Premium Three Nuts 75g" },
+    { code: "4793001555056", name: "Sunflower Seed 100g" },
+    { code: "4793001555032", name: "Basil Seed 100g" },
+  ],
+  parkstreet: [
+    { code: "4793001555360", name: "Almond 100g" },
+    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
+    { code: "4793001555858", name: "Brain Booster 100g" },
+    { code: "4793001555490", name: "Dried Plums 100g" },
+    { code: "4793001555414", name: "Walnut 85g" },
+    { code: "4793001555445", name: "Cranberries 100g" },
+    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
+    { code: "4793001555483", name: "Blueberry 85g" },
+    { code: "4793001555377", name: "Flax Seed 100g" },
+    { code: "4793001555063", name: "Black Raisins 100g" },
+    { code: "4793001555353", name: "Pistachio 85g" },
+    { code: "4793001555049", name: "Chia Seeds 100g" },
+    { code: "4793001555612", name: "Kurakkan Flour 300g" },
+    { code: "4793001555629", name: "Kithul Flour 200g" },
+    { code: "4793001555117", name: "White Sesame 200g" },
+    { code: "4793001319513", name: "Black Sesame Seed 100g" },
+    { code: "4793001555506", name: "Rice Flakes 150g" },
+    { code: "4793001555100", name: "Apricot 85g" },
+    { code: "4793001555766", name: "Premium Three Nuts 75g" },
+    { code: "4793001555056", name: "Sunflower Seed 100g" },
+    { code: "4793001555032", name: "Basil Seed 100g" },
+  ],
+  uptown: [
+    { code: "4793001555858", name: "Brain Booster 100g" },
+    { code: "4793001555889", name: "Chocolate With Three Nuts 100g" },
+    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
+    { code: "4793001555926", name: "Nut & Fruits Mix 100g" },
+    { code: "4793001555582", name: "Ceylon Cashew Burnt 75g" },
+    { code: "4793001555575", name: "Ceylon Cashew Devilled 75g" },
+    { code: "6103738486209", name: "Ceylon Cashew Roasted 75g" },
+    { code: "4793001555896", name: "Roasted Seed And Nuts Snack 100g" },
+    { code: "4796033640295", name: "Ceylon Coffee Powder Dark Roast 100g" },
+    { code: "4793001555971", name: "Khalas Dates 200g" },
+    { code: "9477359650595", name: "Bee Honey 200g" },
+    { code: "4793001555490", name: "Dried Plums 100g" },
+    { code: "6103738486296", name: "Forest Bee Honey 460g" },
+    { code: "4793001555391", name: "Organic Roasted Peanuts 200g" },
+  ],
+  nw: [
+    { code: "4793001555360", name: "Almond 100g" },
+    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
+    { code: "4793001555858", name: "Brain Booster 100g" },
+    { code: "4793001555926", name: "Nut & Fruits Mix 100g" },
+    { code: "4793001555889", name: "Chocolate With Three Nuts 100g" },
+    { code: "4793001555896", name: "Roasted Seed And Nuts Snack 100g" },
+    { code: "4793001555490", name: "Dried Plums 100g" },
+    { code: "4793001555414", name: "Walnut 85g" },
+    { code: "4793001555445", name: "Cranberries 100g" },
+    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
+    { code: "4793001319523", name: "Roasted Cashew Nut 100g" },
+    { code: "4793001319697", name: "Devilled Cashew Nut 100g" },
+    { code: "4793001319529", name: "Cashew Nuts Sugar Coated 100g" },
+    { code: "4793001555483", name: "Blueberry 85g" },
+    { code: "4793001555377", name: "Flax Seed 100g" },
+    { code: "4793001555063", name: "Black Raisins 100g" },
+    { code: "4793001555353", name: "Pistachio 85g" },
+    { code: "4793001555049", name: "Chia Seeds 100g" },
+    { code: "4793001555612", name: "Kurakkan Flour 300g" },
+    { code: "4793001555629", name: "Kithul Flour 200g" },
+    { code: "4793001555117", name: "White Sesame 200g" },
+    { code: "4793001319513", name: "Black Sesame Seed 100g" },
+    { code: "4793001555506", name: "Rice Flakes 150g" },
+    { code: "4793001319515", name: "Burnt Cashew Nuts 100g" },
+    { code: "4793001319521", name: "Cashew Nuts Garlic 100g" },
+    { code: "4793001319517", name: "Cashew Nuts Chilli Garlic 100g" },
+    { code: "4793001555100", name: "Apricot 85g" },
+    { code: "4793001555766", name: "Premium Three Nuts 75g" },
+    { code: "4793001555056", name: "Sunflower Seed 100g" },
+    { code: "4793001555032", name: "Basil Seed 100g" },
+  ],
+  shade: [
+    { code: "4793001555353", name: "Pistachio 85g" },
+    { code: "4793001555414", name: "Walnut 85g" },
+    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
+    { code: "4793001555360", name: "Almond 100g" },
+    { code: "4793001555049", name: "Chia Seeds 100g" },
+    { code: "4793001555926", name: "Nut & Fruits Mix 100g" },
+    { code: "4793001555858", name: "Brain Booster 100g" },
+  ],
+  mawella: [
+    { code: "4793001555858", name: "Brain Booster 100g" },
+    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
+    { code: "4793001555889", name: "Chocolate With Three Nuts 100g" },
+    { code: "4793001555926", name: "Nut & Fruits Mix 100g" },
+    { code: "4793001555414", name: "Walnut 85g" },
+    { code: "4793001555360", name: "Almond 100g" },
+    { code: "4793001555353", name: "Pistachio 85g" },
+    { code: "4793001555445", name: "Cranberries 100g" },
+    { code: "4793001555100", name: "Apricot 85g" },
+    { code: "4793001555063", name: "Black Raisins 100g" },
+    { code: "4793001555049", name: "Chia Seeds 100g" },
+    { code: "4793001555377", name: "Flax Seed 100g" },
+    { code: "4793001555896", name: "Roasted Seed And Nuts Snack 100g" },
+    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
+    { code: "4793001555056", name: "Sunflower Seed 100g" },
+    { code: "4793001555483", name: "Blueberry 85g" },
+    { code: "4793001555032", name: "Basil Seed 100g" },
+  ],
+  diligez: [
+    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
+    { code: "4793001555926", name: "Nut & Fruits Mix 100g" },
+    { code: "4793001555353", name: "Pistachio 85g" },
+    { code: "4793001555896", name: "Roasted Seed And Nuts Snack 100g" },
+    { code: "4793001555414", name: "Walnut 85g" },
+    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
+    { code: "4793001555056", name: "Sunflower Seed 100g" },
+    { code: "4793001555032", name: "Basil Seed 100g" },
+    { code: "4793001555360", name: "Almond 100g" },
+    { code: "4793001555254", name: "Almond 45g" },
+    { code: "4793001555483", name: "Blueberry 85g" },
+    { code: "4793001555858", name: "Brain Booster 100g" },
+    { code: "4793001555049", name: "Chia Seeds 100g" },
+    { code: "4793001555445", name: "Cranberries 100g" },
+    { code: "4793001555247", name: "Cranberries 45g" },
+    { code: "4793001555377", name: "Flax Seed 100g" },
+    { code: "4793001555704", name: "Nut & Fruits Mix 50g" },
+    { code: "4793001555490", name: "Dried Plums 100g" },
+    { code: "4793001555766", name: "Premium Three Nuts 75g" },
+    { code: "4796033640202", name: "Ceylon Coffee Bean Dark Roast 100g" },
+    { code: "4796033640196", name: "Ceylon Coffee Bean Medium Roast 100g" },
+    { code: "4793001555889", name: "Chocolate With Three Nuts 100g" },
+  ],
 };
 
+// Store -> type mapping (localStorage, editable)
+let storeTypes = Object.assign({}, DEFAULT_STORE_TYPES, JSON.parse(localStorage.getItem('kenko_store_types_v3') || '{}'));
+function saveStoreTypes() { localStorage.setItem('kenko_store_types_v3', JSON.stringify(storeTypes)); }
+
+function getStoreType(storeName) {
+  if (storeTypes[storeName]) return storeTypes[storeName];
+  // "Spar - Kalubovila" වගේ location එකක් එක්ක නම base name එකෙන් resolve කරනවා
+  const base = storeName.split(' - ')[0];
+  return storeTypes[base] || 'spar';
+}
+
 function getStoreItems(storeName) {
-  const type = STORE_LISTS[storeName] || 'spar';
-  return STORE_ITEMS[type] || STORE_ITEMS.spar;
+  return STORE_ITEMS[getStoreType(storeName)] || STORE_ITEMS.spar;
 }
 
-// Build sections dynamically based on store items
-function buildSectionsData(storeName) {
-  const allItems = getStoreItems(storeName);
-  const cashewCodes = new Set(['4793001319515','4793001319517','4793001319523','4793001319525','4793001319527','4793001319529','4793001319697','4793001555575','4793001555582','4796033640042','8906115380161']);
-  const littletsCodes = new Set(['4793001319546','4793001319591']);
 
-  const cashews = allItems.filter(p => cashewCodes.has(p.code));
-  // Little Ts merged into cashew section
-  const littlets = allItems.filter(p => littletsCodes.has(p.code));
-  const nuts = allItems.filter(p => !cashewCodes.has(p.code) && !littletsCodes.has(p.code));
-
-  const sections = {};
-  if (nuts.length) sections.nuts = { icon: "🥜", label: "Nuts & Seeds", items: nuts };
-  if (cashews.length || littlets.length) sections.cashew = { icon: "🫘", label: "Cashew & Peanuts", items: [...cashews, ...littlets] };
-  return sections;
-}
-
-let SECTIONS_DATA = {};
 
 // ===== STATE =====
 let currentRep = '';
-let currentStore = '';
+let currentStore = '';      // display name (location එක්ක)
+let currentStoreBase = '';  // outlet base name (product list එකට)
 let visitStart = null;
-let visitData = {}; // { sectionKey: { ok, missing, notes } }
+let visitItems = [];        // current outlet product list
+let itemStatus = {};        // { code: 'ok' | 'low' | 'miss' }
+let itemQty = {};           // { code: n } facing/qty count
+let itemExpiry = {};        // { code: true } expiry ළඟයි flag
 let scanFiles = [];
-let scanSection = '';
-let scanState = { ok: [], unverified: [], confirmed: new Set() };
+let visitGPS = null;        // { lat, lng }
 
-// Stores (localStorage)
-let stores = JSON.parse(localStorage.getItem('kenko_stores') || '[]');
+// Stores (localStorage) — v3: outlet names only, location වෙනම type කරනවා
+const OLD_DEFAULTS = ['Spar Kalubovila','Spar Thalawathugoda','Spar Pepilitana','Healthguard Pharmacy','Jeewaka Pharmacy','Kandy','CFC','Ovita','Park Street','Uptown','NW','Shade','Mawella','Diligez'];
+let stores = JSON.parse(localStorage.getItem('kenko_stores_v3') || '[]');
 if (!stores.length) {
-  stores = ['Spar Kalubovila','Spar Thalawathugoda','Spar Pepilitana','Healthguard Pharmacy','Jeewaka Pharmacy'];
+  stores = Object.keys(DEFAULT_STORE_TYPES);
+  // migrate custom stores from older versions (old defaults අයින් කරලා)
+  const older = JSON.parse(localStorage.getItem('kenko_stores_v2') || localStorage.getItem('kenko_stores') || '[]');
+  older.forEach(s => { if (!stores.includes(s) && !OLD_DEFAULTS.includes(s)) stores.push(s); });
   saveStores();
 }
 
-function saveStores() { localStorage.setItem('kenko_stores', JSON.stringify(stores)); }
+function saveStores() { localStorage.setItem('kenko_stores_v3', JSON.stringify(stores)); }
 
 // ===== NAVIGATION =====
 function goTo(id) {
@@ -422,7 +599,8 @@ function goTo(id) {
   document.getElementById(id).classList.add('active');
   window.scrollTo(0,0);
   if (id === 's-manage') renderStoreManage();
-  if (id === 's-login') populateStoreSelect();
+  if (id === 's-login') { populateStoreSelect(); updatePendingBadge(); }
+  if (id === 's-history') renderHistory();
 }
 
 // ===== LOGIN =====
@@ -441,60 +619,117 @@ function populateStoreSelect() {
 function startVisit() {
   const rep = document.getElementById('rep-select').value;
   const store = document.getElementById('store-select').value;
+  const loc = document.getElementById('store-location').value.trim();
   const errEl = document.getElementById('login-err');
   if (!rep || !store) { errEl.style.display = 'block'; return; }
   errEl.style.display = 'none';
   currentRep = rep;
-  currentStore = store;
+  currentStoreBase = store;
+  // Location type කළොත් "Spar - Kalubovila", නැත්නම් "Spar"
+  currentStore = loc ? store + ' - ' + loc : store;
   visitStart = new Date();
-  visitData = {};
-  SECTIONS_DATA = buildSectionsData(store);
-  buildSectionGrid();
-  document.getElementById('visit-store-name').textContent = store;
-  const storeType = STORE_LISTS[store] || 'spar';
-  const totalItems = getStoreItems(store).length;
-  document.getElementById('visit-meta').textContent = rep + ' · ' + fmtTime(visitStart) + ' · ' + totalItems + ' items';
-  goTo('s-sections');
+  visitItems = getStoreItems(store);
+  itemStatus = {};
+  itemQty = {};
+  itemExpiry = {};
+  scanFiles = [];
+  visitGPS = null;
+  captureGPS();
+  document.getElementById('scan-previews').innerHTML = '';
+  document.getElementById('scan-err').style.display = 'none';
+  document.getElementById('scan-loading').style.display = 'none';
+  document.getElementById('visit-notes').value = '';
+  document.getElementById('visit-competitor').value = '';
+  document.getElementById('visit-gps').textContent = '';
+  document.getElementById('visit-store-name').textContent = currentStore;
+  document.getElementById('visit-meta').textContent = rep + ' · ' + fmtTime(visitStart) + ' · ' + visitItems.length + ' items';
+  renderChecklist();
+  goTo('s-checklist');
 }
 
 function fmtTime(d) {
   return d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
 }
 
-// ===== SECTIONS =====
-function buildSectionGrid() {
-  const grid = document.getElementById('section-grid');
-  grid.innerHTML = '';
-  Object.entries(SECTIONS_DATA).forEach(([key, sec]) => {
-    const done = visitData[key];
-    const div = document.createElement('div');
-    div.className = 'sec-card' + (done ? ' done' : '');
-    div.id = 'sec-' + key;
-    div.innerHTML = `
-      ${done ? '<div class="done-badge">Done</div>' : ''}
-      <div class="sec-icon">${sec.icon}</div>
-      <div class="sec-name">${sec.label}</div>
-      <div class="sec-count">${sec.items.length} items${done ? ' · ' + done.missing.length + ' missing' : ''}</div>`;
-    div.onclick = () => openScan(key);
-    grid.appendChild(div);
-  });
+// ===== CHECKLIST =====
+function renderChecklist() {
+  const list = document.getElementById('check-list');
+  list.innerHTML = visitItems.map(p => {
+    const st = itemStatus[p.code] || '';
+    const rowCls = st === 'ok' ? 'ok' : st === 'low' ? 'low' : st === 'miss' ? 'miss' : '';
+    const exp = itemExpiry[p.code];
+    const qty = itemQty[p.code] || 0;
+    // ඇත / Low වුණාම qty stepper එක පේනවා
+    const qtyRow = (st === 'ok' || st === 'low') ? `
+      <div class="qty-row">
+        <span class="q-lbl">Facings:</span>
+        <button class="q-btn" onclick="qtyChange('${p.code}',-1)">−</button>
+        <span class="q-val">${qty || '–'}</span>
+        <button class="q-btn" onclick="qtyChange('${p.code}',1)">+</button>
+      </div>` : '';
+    return `<div class="item-row ${rowCls}">
+      <div style="flex:1;min-width:0;">
+        <div class="item-name">${p.name}</div>
+        ${qtyRow}
+      </div>
+      <div class="st-btns">
+        <button class="st-btn ${st === 'ok' ? 'on-ok' : ''}" onclick="setStatus('${p.code}','ok')">ඇත</button>
+        <button class="st-btn ${st === 'low' ? 'on-low' : ''}" onclick="setStatus('${p.code}','low')">Low</button>
+        <button class="st-btn ${st === 'miss' ? 'on-miss' : ''}" onclick="setStatus('${p.code}','miss')">නැත</button>
+        <button class="st-btn exp ${exp ? 'on-exp' : ''}" onclick="toggleExpiry('${p.code}')" title="Expiry ළඟයි">⏰</button>
+      </div>
+    </div>`;
+  }).join('');
+  updateCounts();
 }
 
-// ===== SCAN =====
-function openScan(key) {
-  scanSection = key;
-  scanFiles = [];
-  scanState = { ok: [], unverified: [], confirmed: new Set() };
-  document.getElementById('scan-previews').innerHTML = '';
-  document.getElementById('scan-results').style.display = 'none';
-  document.getElementById('scan-err').style.display = 'none';
-  document.getElementById('scan-loading').style.display = 'none';
-  document.getElementById('section-notes').value = visitData[key]?.notes || '';
-  document.getElementById('scan-section-name').textContent = SECTIONS_DATA[key].label;
-  document.getElementById('scan-store-sub').textContent = currentStore;
-  goTo('s-scan');
+function qtyChange(code, d) {
+  itemQty[code] = Math.max(0, (itemQty[code] || 0) + d);
+  renderChecklist();
 }
 
+function toggleExpiry(code) {
+  if (itemExpiry[code]) delete itemExpiry[code];
+  else itemExpiry[code] = true;
+  renderChecklist();
+}
+
+// ===== GPS =====
+function captureGPS() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      visitGPS = { lat: +pos.coords.latitude.toFixed(6), lng: +pos.coords.longitude.toFixed(6) };
+      const el = document.getElementById('visit-gps');
+      if (el) el.textContent = '📍 GPS locked: ' + visitGPS.lat + ', ' + visitGPS.lng;
+    },
+    () => { const el = document.getElementById('visit-gps'); if (el) el.textContent = ''; },
+    { enableHighAccuracy: true, timeout: 8000 }
+  );
+}
+
+function setStatus(code, st) {
+  // එකම button එක ආයෙත් ඔබා කළොත් clear වෙනවා
+  if (itemStatus[code] === st) delete itemStatus[code];
+  else itemStatus[code] = st;
+  renderChecklist();
+}
+
+function statusItems(st) {
+  return visitItems.filter(p => itemStatus[p.code] === st);
+}
+function uncheckedItems() {
+  return visitItems.filter(p => !itemStatus[p.code]);
+}
+
+function updateCounts() {
+  document.getElementById('c-total').textContent = visitItems.length;
+  document.getElementById('c-ok').textContent = statusItems('ok').length;
+  document.getElementById('c-low').textContent = statusItems('low').length;
+  document.getElementById('c-miss').textContent = statusItems('miss').length;
+}
+
+// ===== SCAN (optional helper) =====
 document.getElementById('scan-upload-btn').addEventListener('click', function() {
   document.getElementById('scan-file-input').click();
 });
@@ -511,10 +746,10 @@ document.getElementById('scan-file-input').addEventListener('change', function()
 function renderScanPreviews() {
   const row = document.getElementById('scan-previews');
   row.innerHTML = '';
-  scanFiles.forEach((f, i) => {
-    const url = URL.createObjectURL(f);
+  scanFiles.forEach(f => {
     const img = document.createElement('img');
-    img.src = url; img.className = 'thumb';
+    img.src = URL.createObjectURL(f);
+    img.className = 'thumb';
     row.appendChild(img);
   });
 }
@@ -531,13 +766,10 @@ async function toBase64(file) {
 async function doScan() {
   const loading = document.getElementById('scan-loading');
   const err = document.getElementById('scan-err');
-  const results = document.getElementById('scan-results');
   loading.style.display = 'block';
-  results.style.display = 'none';
   err.style.display = 'none';
 
-  const sec = SECTIONS_DATA[scanSection];
-  const productNames = sec.items.map(p => p.name).join('\n');
+  const productNames = visitItems.map(p => p.name).join('\n');
 
   try {
     const images = [];
@@ -587,11 +819,12 @@ Respond ONLY in JSON:
       });
     }
 
-    scanState.ok = sec.items.filter(p => isMatch(p));
-    scanState.unverified = sec.items.filter(p => !isMatch(p));
-    scanState.confirmed = new Set();
-
-    renderScanResults();
+    let marked = 0;
+    visitItems.forEach(p => {
+      if (isMatch(p) && !itemStatus[p.code]) { itemStatus[p.code] = 'ok'; marked++; }
+    });
+    renderChecklist();
+    showToast('📷 Items ' + marked + 'ක් "ඇත" mark කළා — ඉතිරි ටික අතින් mark කරන්න');
   } catch(e) {
     err.style.display = 'block';
     err.textContent = '⚠ ' + e.message;
@@ -600,109 +833,224 @@ Respond ONLY in JSON:
   }
 }
 
-function renderScanResults() {
-  const confirmed = scanState.unverified.filter(p => scanState.confirmed.has(p.code));
-  const pending = scanState.unverified.filter(p => !scanState.confirmed.has(p.code));
-  const total = SECTIONS_DATA[scanSection].items.length;
-
-  document.getElementById('sr-total').textContent = total;
-  document.getElementById('sr-ok').textContent = scanState.ok.length;
-  document.getElementById('sr-miss').textContent = confirmed.length;
-  document.getElementById('scan-results').style.display = 'block';
-
-  const list = document.getElementById('sr-list');
-  const allItems = [...confirmed, ...pending, ...scanState.ok];
-  list.innerHTML = allItems.map(p => {
-    const isOk = scanState.ok.includes(p);
-    const isMiss = scanState.confirmed.has(p.code);
-    if (isOk) return `<div class="item-row ok"><div class="dot dot-ok"></div><div class="item-name">${p.name}</div><span style="font-size:11px;color:#4caf50;">ඇත</span></div>`;
-    if (isMiss) return `<div class="item-row miss"><div class="dot dot-miss"></div><div class="item-name">${p.name}</div><button class="miss-tap" onclick="toggleMiss('${p.code}')">නැත ✓</button></div>`;
-    return `<div class="item-row verify"><div class="dot dot-verify"></div><div class="item-name">${p.name}</div><button class="verify-tap" onclick="toggleMiss('${p.code}')">Verify?</button></div>`;
-  }).join('');
-}
-
-function toggleMiss(code) {
-  if (scanState.confirmed.has(code)) scanState.confirmed.delete(code);
-  else scanState.confirmed.add(code);
-  renderScanResults();
-}
-
-function saveSection() {
-  const missing = scanState.unverified.filter(p => scanState.confirmed.has(p.code));
-  visitData[scanSection] = {
-    ok: scanState.ok,
-    missing: missing,
-    notes: document.getElementById('section-notes').value.trim()
-  };
-  buildSectionGrid();
-  goTo('s-sections');
-  showToast(SECTIONS_DATA[scanSection].label + ' saved ✓');
-}
-
 // ===== FINISH =====
 function goFinish() {
-  const done = Object.keys(visitData).length;
-  if (!done) { showToast('අවම section එකක් scan කරන්න'); return; }
+  const checked = visitItems.length - uncheckedItems().length;
+  if (!checked) { showToast('අවම item එකක්වත් mark කරන්න'); return; }
 
   document.getElementById('finish-meta').textContent = currentRep + ' · ' + currentStore + ' · ' + fmtTime(visitStart);
 
-  // Chips
+  const ok = statusItems('ok'), low = statusItems('low'), miss = statusItems('miss'), un = uncheckedItems();
   const chips = document.getElementById('finish-chips');
-  chips.innerHTML = Object.entries(SECTIONS_DATA).map(([key, sec]) => {
-    const d = visitData[key];
-    if (!d) return `<div class="visit-chip"><div class="vc-left">${sec.icon} ${sec.label}</div><div class="vc-right">Not scanned</div></div>`;
-    return `<div class="visit-chip ${d.missing.length ? 'has-miss' : ''}">
-      <div class="vc-left">${sec.icon} ${sec.label}</div>
-      <div class="vc-right">${d.missing.length ? '🔴 ' + d.missing.length + ' missing' : '✅ All OK'}</div>
-    </div>`;
-  }).join('');
+  chips.innerHTML = `
+    <div class="visit-chip"><div class="vc-left">✅ ඇත</div><div class="vc-right">${ok.length} items</div></div>
+    <div class="visit-chip"><div class="vc-left">🟡 Low Stock</div><div class="vc-right" style="color:#ffc107;">${low.length} items</div></div>
+    <div class="visit-chip ${miss.length ? 'has-miss' : ''}"><div class="vc-left">🔴 නැත</div><div class="vc-right">${miss.length} items</div></div>
+    ${un.length ? `<div class="visit-chip"><div class="vc-left">⏭ Not checked</div><div class="vc-right">${un.length} items</div></div>` : ''}`;
 
-  // Report
   document.getElementById('report-preview').textContent = buildReport();
   goTo('s-finish');
 }
 
 function buildReport() {
   const now = new Date();
+  const ok = statusItems('ok'), low = statusItems('low'), miss = statusItems('miss'), un = uncheckedItems();
+  const expItems = visitItems.filter(p => itemExpiry[p.code]);
+  const notes = document.getElementById('visit-notes').value.trim();
+  const competitor = document.getElementById('visit-competitor').value.trim();
+  const qtyStr = p => itemQty[p.code] ? ` ×${itemQty[p.code]}` : '';
+
   let r = `🏪 KENKO1ST SHELF REPORT\n`;
   r += `━━━━━━━━━━━━━━━━━━━━\n`;
   r += `Store: ${currentStore}\n`;
   r += `Rep: ${currentRep}\n`;
   r += `Date: ${fmtTime(now)}\n`;
+  if (visitGPS) r += `📍 GPS: https://maps.google.com/?q=${visitGPS.lat},${visitGPS.lng}\n`;
   r += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-  let totalMiss = 0;
-  Object.entries(SECTIONS_DATA).forEach(([key, sec]) => {
-    const d = visitData[key];
-    r += `${sec.icon} ${sec.label.toUpperCase()}\n`;
-    if (!d) { r += `  ⏭ Not scanned\n\n`; return; }
-    if (d.missing.length === 0) { r += `  ✅ All items present\n\n`; return; }
-    totalMiss += d.missing.length;
-    r += `  🔴 Missing (${d.missing.length}):\n`;
-    d.missing.forEach(p => r += `  • ${p.name}\n`);
-    if (d.notes) r += `  📝 ${d.notes}\n`;
+  if (ok.length) {
+    r += `✅ ඇත (${ok.length}):\n`;
+    ok.forEach(p => r += `  • ${p.name}${qtyStr(p)}\n`);
     r += '\n';
-  });
+  }
+
+  if (low.length) {
+    r += `🟡 LOW STOCK (${low.length}):\n`;
+    low.forEach(p => r += `  • ${p.name}${qtyStr(p)}\n`);
+    r += '\n';
+  }
+  if (miss.length) {
+    r += `🔴 නැත / MISSING (${miss.length}):\n`;
+    miss.forEach(p => r += `  • ${p.name}\n`);
+    r += '\n';
+  }
+  if (un.length) {
+    r += `⏭ NOT CHECKED (${un.length}):\n`;
+    un.forEach(p => r += `  • ${p.name}\n`);
+    r += '\n';
+  }
+  if (expItems.length) {
+    r += `⏰ EXPIRY ළඟයි (${expItems.length}):\n`;
+    expItems.forEach(p => r += `  • ${p.name}\n`);
+    r += '\n';
+  }
+  if (competitor) r += `🏷 Competitors: ${competitor}\n\n`;
+  if (notes) r += `📝 Notes: ${notes}\n\n`;
 
   r += `━━━━━━━━━━━━━━━━━━━━\n`;
-  r += `Total Missing: ${totalMiss} items\n`;
-  r += `Status: ${totalMiss === 0 ? '✅ FULL STOCK' : '⚠ ACTION REQUIRED'}`;
+  r += `Missing: ${miss.length} · Low: ${low.length}\n`;
+  r += `Status: ${miss.length === 0 && low.length === 0 ? '✅ FULL STOCK' : '⚠ ACTION REQUIRED'}`;
   return r;
 }
 
-async function submitVisit() {
-  try {
-    const resp = await fetch(`${WORKER_URL}/save-visit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rep: currentRep, store: currentStore, visitStart: visitStart.toISOString(), visitData })
+async function buildPayload() {
+  const ok = statusItems('ok'), low = statusItems('low'), miss = statusItems('miss');
+  const notes = document.getElementById('visit-notes').value.trim();
+  const competitor = document.getElementById('visit-competitor').value.trim();
+  const expItems = visitItems.filter(p => itemExpiry[p.code]);
+  const withQty = p => itemQty[p.code] ? { ...p, qty: itemQty[p.code] } : { ...p };
+
+  // shelf photos compress කරලා attach කරනවා (max 4)
+  let photos = [];
+  try { photos = await compressPhotos(scanFiles.slice(0, 4)); } catch(e) {}
+
+  // manager dashboard එකට compatible format එක (sections වැනි)
+  const visitData = {
+    all: {
+      ok: [...ok.map(withQty), ...low.map(p => ({ ...withQty(p), name: p.name + ' (LOW STOCK)' }))],
+      low: low.map(withQty),
+      missing: miss,
+      expiry: expItems,
+      competitor: competitor,
+      notes: notes
+    }
+  };
+  return {
+    rep: currentRep,
+    store: currentStore,
+    visitStart: visitStart.toISOString(),
+    gps: visitGPS,
+    photos: photos,
+    visitData
+  };
+}
+
+async function compressPhotos(files) {
+  const out = [];
+  for (const f of files) {
+    const dataUrl = await new Promise((res, rej) => {
+      const img = new Image();
+      const url = URL.createObjectURL(f);
+      img.onload = () => {
+        const max = 900;
+        let w = img.width, h = img.height;
+        if (w > max || h > max) { const s = max / Math.max(w, h); w = Math.round(w*s); h = Math.round(h*s); }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        res(c.toDataURL('image/jpeg', 0.55));
+      };
+      img.onerror = rej;
+      img.src = url;
     });
-    const data = await resp.json();
-    if (data.success) showToast('✅ Manager dashboard එකට submit කළා!');
-    else showToast('⚠ Submit error: ' + (data.error || 'unknown'));
-  } catch(e) {
-    showToast('⚠ Submit failed: ' + e.message);
+    out.push(dataUrl);
   }
+  return out;
+}
+
+async function sendPayload(payload) {
+  const resp = await fetch(`${WORKER_URL}/save-visit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const data = await resp.json();
+  if (!data.success) throw new Error(data.error || 'unknown');
+}
+
+async function submitVisit() {
+  const payload = await buildPayload();
+  saveHistory();
+  try {
+    await sendPayload(payload);
+    showToast('✅ Manager dashboard එකට submit කළා!');
+  } catch(e) {
+    // OFFLINE MODE: queue එකට දාලා පස්සේ auto retry
+    queuePending(payload);
+    showToast('📡 Signal නැහැ — save කළා, පස්සේ auto submit වෙනවා');
+  }
+}
+
+// ===== OFFLINE QUEUE =====
+function getPending() { return JSON.parse(localStorage.getItem('kenko_pending_visits') || '[]'); }
+function setPending(q) { localStorage.setItem('kenko_pending_visits', JSON.stringify(q)); updatePendingBadge(); }
+
+function queuePending(payload) {
+  const q = getPending();
+  // photos අයින් කරලා queue කරනවා (localStorage size limit නිසා)
+  q.push({ ...payload, photos: [] });
+  try { setPending(q); } catch(e) { showToast('⚠ Storage full — report copy කරගන්න'); }
+}
+
+function updatePendingBadge() {
+  const b = document.getElementById('pending-badge');
+  if (!b) return;
+  const n = getPending().length;
+  b.style.display = n ? 'block' : 'none';
+  b.textContent = '📡 Pending visits ' + n + 'ක් submit වෙන්න තියෙනවා — tap කරන්න retry කරන්න';
+}
+
+async function flushPending(manual) {
+  const q = getPending();
+  if (!q.length) return;
+  const remaining = [];
+  let sent = 0;
+  for (const p of q) {
+    try { await sendPayload(p); sent++; }
+    catch(e) { remaining.push(p); }
+  }
+  setPending(remaining);
+  if (sent) showToast('✅ Pending visits ' + sent + 'ක් submit කළා!');
+  else if (manual) showToast('⚠ තාම connect වෙන්නේ නැහැ — පස්සේ try කරන්න');
+}
+
+window.addEventListener('online', () => flushPending(false));
+
+// ===== VISIT HISTORY (local) =====
+function saveHistory() {
+  const h = JSON.parse(localStorage.getItem('kenko_visit_history') || '[]');
+  h.unshift({
+    store: currentStore,
+    rep: currentRep,
+    time: visitStart.toISOString(),
+    ok: statusItems('ok').length,
+    low: statusItems('low').length,
+    miss: statusItems('miss').length,
+    report: buildReport()
+  });
+  if (h.length > 50) h.length = 50;
+  try { localStorage.setItem('kenko_visit_history', JSON.stringify(h)); } catch(e) {}
+}
+
+function renderHistory() {
+  const h = JSON.parse(localStorage.getItem('kenko_visit_history') || '[]');
+  const list = document.getElementById('history-list');
+  if (!h.length) {
+    list.innerHTML = '<div style="text-align:center;color:#555;padding:40px 0;font-size:13px;">තාම visits නැහැ</div>';
+    return;
+  }
+  list.innerHTML = h.map(v => `
+    <div class="hist-card" onclick="this.classList.toggle('open')">
+      <div class="h-store">🏪 ${v.store}</div>
+      <div class="h-meta">${v.rep} · ${fmtTime(new Date(v.time))}</div>
+      <div class="h-stats">
+        <span style="color:#4caf50;">✅ ${v.ok}</span>
+        <span style="color:#ffc107;">🟡 ${v.low}</span>
+        <span style="color:#ff5252;">🔴 ${v.miss}</span>
+      </div>
+      <pre>${v.report.replace(/</g,'&lt;')}</pre>
+    </div>`).join('');
 }
 
 function shareReport() {
@@ -719,7 +1067,13 @@ function copyReport() {
 }
 
 function newVisit() {
-  visitData = {};
+  itemStatus = {};
+  itemQty = {};
+  itemExpiry = {};
+  visitItems = [];
+  scanFiles = [];
+  visitGPS = null;
+  document.getElementById('store-location').value = '';
   goTo('s-login');
   populateStoreSelect();
 }
@@ -729,26 +1083,44 @@ function renderStoreManage() {
   const list = document.getElementById('store-list-manage');
   list.innerHTML = stores.map((s, i) => `
     <div class="visit-chip">
-      <div class="vc-left">🏪 ${s}</div>
+      <div class="vc-left">🏪 ${s}<div style="font-size:11px;color:#666;font-weight:400;margin-top:2px;">${LIST_TYPES[getStoreType(s)] || getStoreType(s)} list · ${getStoreItems(s).length} items</div></div>
       <button onclick="removeStore(${i})" style="background:rgba(255,82,82,0.12);color:#ff5252;border:none;padding:5px 10px;border-radius:8px;font-size:12px;cursor:pointer;">Remove</button>
     </div>`).join('');
+
+  // populate type select
+  const tSel = document.getElementById('new-store-type');
+  if (tSel && !tSel.options.length) {
+    Object.entries(LIST_TYPES).forEach(([k, label]) => {
+      const o = document.createElement('option');
+      o.value = k;
+      o.textContent = label + ' list (' + (STORE_ITEMS[k] || []).length + ' items)';
+      tSel.appendChild(o);
+    });
+  }
 }
 
 function addStore() {
   const inp = document.getElementById('new-store-input');
   const name = inp.value.trim();
   if (!name) return;
+  if (stores.includes(name)) { showToast('⚠ "' + name + '" already exists'); return; }
+  const type = document.getElementById('new-store-type').value || 'spar';
   stores.push(name);
+  storeTypes[name] = type;
   saveStores();
+  saveStoreTypes();
   inp.value = '';
   renderStoreManage();
   populateStoreSelect();
-  showToast(name + ' added ✓');
+  showToast(name + ' added (' + (LIST_TYPES[type] || type) + ' list) ✓');
 }
 
 function removeStore(i) {
+  const name = stores[i];
   stores.splice(i, 1);
+  if (!(name in DEFAULT_STORE_TYPES)) delete storeTypes[name];
   saveStores();
+  saveStoreTypes();
   renderStoreManage();
   populateStoreSelect();
 }
@@ -766,6 +1138,8 @@ function showToast(msg) {
 
 // Init
 populateStoreSelect();
+updatePendingBadge();
+flushPending(false);
 </script>
 
 <div id="toast-el" style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:#333;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;opacity:0;transition:all 0.25s;pointer-events:none;white-space:nowrap;z-index:999;"></div>
