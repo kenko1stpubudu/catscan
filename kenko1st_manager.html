@@ -157,7 +157,29 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .an-empty { font-size: 13px; color: #aaa; padding: 10px 0; }
 .an-reco { background: #e8f5e9; border-left: 4px solid #43a047; border-radius: 8px; padding: 10px 12px; font-size: 13px; color: #2e7d32; margin-bottom: 6px; }
 .an-reco b { font-weight: 700; }
+
+/* Export panel */
+.export-panel { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+.export-panel h3 { font-size: 14px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.export-panel .sub { font-size: 12px; color: #aaa; margin-bottom: 16px; }
+.exp-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.exp-controls input[type=date], .exp-controls select { padding: 9px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: #fff; outline: none; }
+.exp-dl-btn { background: #1a7431; color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; }
+.exp-dl-btn:hover { background: #14602a; }
+.exp-dl-btn:disabled { background: #bbb; cursor: not-allowed; }
+.exp-preview { overflow-x: auto; border: 1px solid #eee; border-radius: 10px; max-height: 420px; }
+.exp-table { border-collapse: collapse; font-size: 12px; width: 100%; white-space: nowrap; }
+.exp-table th, .exp-table td { border: 1px solid #eee; padding: 6px 9px; text-align: center; }
+.exp-table th { background: #f5f5f5; font-weight: 700; position: sticky; top: 0; }
+.exp-table td.pname { text-align: left; font-weight: 500; }
+.exp-table td.cell-ok { color: #2e7d32; font-weight: 700; }
+.exp-table td.cell-out { color: #c62828; font-weight: 700; background: #fff5f5; }
+.exp-table td.cell-low { color: #f57f17; font-weight: 700; background: #fff8e1; }
+.exp-table td.cell-na { color: #ccc; }
+.exp-table tr.total-row td { background: #fafafa; font-weight: 600; }
+.exp-empty { font-size: 13px; color: #aaa; padding: 16px 0; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -186,6 +208,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="store-table" id="store-table" style="display:none;">
     <h3>📊 Store Overview</h3>
     <div id="store-table-body"></div>
+  </div>
+
+  <!-- Excel Export -->
+  <div class="export-panel" id="export-panel" style="display:none;">
+    <h3>📥 Daily Stock Sheet (Excel)</h3>
+    <div class="sub">දවසක් + outlet type එකක් තෝරලා, ඒ දවසේ visits වලින් stock matrix එකක් — Excel එකක් download කරන්න</div>
+    <div class="exp-controls">
+      <input type="date" id="exp-date">
+      <select id="exp-outlet" onchange="renderExportPreview()"></select>
+      <button class="exp-dl-btn" id="exp-dl" onclick="downloadStockSheet()">⬇ Download Excel</button>
+    </div>
+    <div class="exp-preview" id="exp-preview"></div>
   </div>
 
   <!-- Analysis -->
@@ -408,6 +442,7 @@ async function loadVisits() {
     renderSummary();
     renderStoreTable();
     renderAnalysisOutlets();
+    setupExport();
     renderVisits();
     document.getElementById('last-updated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
     document.getElementById('date-lbl').textContent = new Date().toLocaleDateString('en-GB', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
@@ -586,6 +621,140 @@ async function clearVisit(v) {
   } catch(e) {
     alert('⚠ Clear error: ' + e.message);
   }
+}
+
+// ===== EXCEL EXPORT (daily stock matrix, SPAR-style) =====
+function ymd(dateObj) {
+  const d = new Date(dateObj);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function locShort(store, base) {
+  const s = store.replace(base, '').replace(/^\s*-\s*/, '').trim();
+  return s || base;
+}
+
+function setupExport() {
+  const panel = document.getElementById('export-panel');
+  if (!allVisits.length) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  // date default = අද (හෝ අලුත්ම visit එකේ date එක)
+  const dInp = document.getElementById('exp-date');
+  if (!dInp.value) {
+    const latest = allVisits.reduce((a, v) => new Date(v.savedAt) > new Date(a) ? v.savedAt : a, allVisits[0].savedAt);
+    dInp.value = ymd(latest);
+  }
+  dInp.onchange = () => { populateExportOutlets(); renderExportPreview(); };
+  populateExportOutlets();
+  renderExportPreview();
+}
+
+// තෝරපු දවසේ visits වල outlet types
+function visitsOnDate(dateStr) {
+  return allVisits.filter(v => ymd(v.savedAt) === dateStr);
+}
+function populateExportOutlets() {
+  const sel = document.getElementById('exp-outlet');
+  const dateStr = document.getElementById('exp-date').value;
+  const bases = [...new Set(visitsOnDate(dateStr).map(v => baseOutlet(v.store)))].sort();
+  const prev = sel.value;
+  sel.innerHTML = bases.map(b => `<option value="${b}">${b}</option>`).join('');
+  if (bases.includes(prev)) sel.value = prev;
+}
+
+// stock matrix එක build කරනවා: { locations, rows:[{code,name,cells:{loc:'ok'|'out'|'low'|''}, out, low}] }
+function buildStockMatrix(dateStr, base) {
+  const visits = visitsOnDate(dateStr).filter(v => baseOutlet(v.store) === base);
+  if (!visits.length) return null;
+
+  // location එකකට අලුත්ම visit එක (එක දවසේ දෙපාරක් ගියොත්)
+  const latestPerLoc = {};
+  visits.forEach(v => {
+    if (!latestPerLoc[v.store] || new Date(v.savedAt) > new Date(latestPerLoc[v.store].savedAt)) latestPerLoc[v.store] = v;
+  });
+  const locStores = Object.keys(latestPerLoc).sort();
+  const locations = locStores.map(s => locShort(s, base));
+
+  // item map: code -> { name, perLoc:{loc: status} }
+  const items = {};
+  locStores.forEach(store => {
+    const loc = locShort(store, base);
+    const sec = getSec(latestPerLoc[store]);
+    (sec.ok || []).forEach(p => reg(p, loc, 'ok'));
+    (sec.low || []).forEach(p => reg(p, loc, 'low'));
+    (sec.missing || []).forEach(p => reg(p, loc, 'out'));
+  });
+  function reg(p, loc, status) {
+    const cleanName = p.name.replace(' (LOW STOCK)', '');
+    if (!items[p.code]) items[p.code] = { code: p.code, name: cleanName, perLoc: {} };
+    items[p.code].perLoc[loc] = status;
+  }
+
+  const rows = Object.values(items).map(it => {
+    let out = 0, low = 0;
+    const cells = {};
+    locations.forEach(loc => {
+      const st = it.perLoc[loc] || '';
+      cells[loc] = st;
+      if (st === 'out') out++;
+      if (st === 'low') low++;
+    });
+    return { code: it.code, name: it.name, cells, out, low };
+  });
+  // OUT වැඩිපුර ඒවා උඩට (SPAR sheet එක වගේ)
+  rows.sort((a, b) => b.out - a.out || b.low - a.low || a.name.localeCompare(b.name));
+
+  return { locations, rows };
+}
+
+function renderExportPreview() {
+  const dateStr = document.getElementById('exp-date').value;
+  const base = document.getElementById('exp-outlet').value;
+  const box = document.getElementById('exp-preview');
+  const dl = document.getElementById('exp-dl');
+  if (!base) { box.innerHTML = '<div class="exp-empty">ඒ දවසට visits නැහැ</div>'; dl.disabled = true; return; }
+  const m = buildStockMatrix(dateStr, base);
+  if (!m || !m.rows.length) { box.innerHTML = '<div class="exp-empty">ඒ දවසට visits නැහැ</div>'; dl.disabled = true; return; }
+  dl.disabled = false;
+
+  const sym = { ok: '✓', out: '0', low: 'LOW', '': '–' };
+  const cls = { ok: 'cell-ok', out: 'cell-out', low: 'cell-low', '': 'cell-na' };
+  let html = '<table class="exp-table"><thead><tr><th>#</th><th>Code</th><th>Product Description</th>';
+  m.locations.forEach(l => html += `<th>${l}</th>`);
+  html += '<th>OUT</th><th>LOW</th></tr></thead><tbody>';
+  m.rows.forEach((r, i) => {
+    html += `<tr><td>${i+1}</td><td>${r.code}</td><td class="pname">${r.name}</td>`;
+    m.locations.forEach(l => { const st = r.cells[l]; html += `<td class="${cls[st]}">${sym[st]}</td>`; });
+    html += `<td class="cell-out">${r.out || ''}</td><td class="cell-low">${r.low || ''}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  box.innerHTML = html;
+}
+
+function downloadStockSheet() {
+  const dateStr = document.getElementById('exp-date').value;
+  const base = document.getElementById('exp-outlet').value;
+  const m = buildStockMatrix(dateStr, base);
+  if (!m || !m.rows.length) return;
+
+  const sym = { ok: '✓', out: '0', low: 'LOW', '': '' };
+  const header = ['#', 'Code', 'Product Description', ...m.locations, 'OUT', 'LOW'];
+  const aoa = [header];
+  m.rows.forEach((r, i) => {
+    const row = [i+1, r.code, r.name, ...m.locations.map(l => sym[r.cells[l]]), r.out || 0, r.low || 0];
+    aoa.push(row);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  // column widths
+  ws['!cols'] = [{ wch: 4 }, { wch: 10 }, { wch: 34 }, ...m.locations.map(() => ({ wch: 12 })), { wch: 6 }, { wch: 6 }];
+  ws['!freeze'] = { xSplit: 3, ySplit: 1 };
+
+  const wb = XLSX.utils.book_new();
+  const sheetName = dateStr.slice(5).replace('-', ' '); // "07 22"
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  const fname = `${base.replace(/\s+/g,'_')}_Stock_${dateStr.replace(/-/g,'_').slice(5)}.xlsx`;
+  XLSX.writeFile(wb, fname);
 }
 
 // ===== ANALYSIS =====
