@@ -133,6 +133,30 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .st-info { font-size: 12px; color: #888; display: flex; gap: 16px; }
 .st-miss { color: #e53935; font-weight: 600; }
 .st-ok { color: #43a047; }
+
+/* Clear button */
+.clear-btn { background: #fff; border: 1px solid #ffcdd2; color: #e53935; padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.clear-btn:hover { background: #ffebee; }
+.vc-actions { margin-top: 12px; display: flex; justify-content: flex-end; }
+
+/* Analysis */
+.analysis { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+.analysis h3 { font-size: 14px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.analysis .sub { font-size: 12px; color: #aaa; margin-bottom: 16px; }
+.an-outlet-sel { padding: 9px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: #fff; cursor: pointer; outline: none; margin-bottom: 16px; }
+.an-block { margin-bottom: 20px; }
+.an-block h4 { font-size: 13px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.an-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-radius: 8px; margin-bottom: 5px; background: #fafafa; }
+.an-row .an-name { font-size: 13px; font-weight: 500; flex: 1; }
+.an-row .an-detail { font-size: 12px; color: #888; }
+.an-row.urgent { background: #fff5f5; }
+.an-pill { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 12px; white-space: nowrap; margin-left: 8px; }
+.pill-red { background: #ffebee; color: #c62828; }
+.pill-yellow { background: #fff8e1; color: #f57f17; }
+.pill-days { background: #ede7f6; color: #5e35b1; }
+.an-empty { font-size: 13px; color: #aaa; padding: 10px 0; }
+.an-reco { background: #e8f5e9; border-left: 4px solid #43a047; border-radius: 8px; padding: 10px 12px; font-size: 13px; color: #2e7d32; margin-bottom: 6px; }
+.an-reco b { font-weight: 700; }
 </style>
 </head>
 <body>
@@ -162,6 +186,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="store-table" id="store-table" style="display:none;">
     <h3>📊 Store Overview</h3>
     <div id="store-table-body"></div>
+  </div>
+
+  <!-- Analysis -->
+  <div class="analysis" id="analysis" style="display:none;">
+    <h3>📊 Order Analysis</h3>
+    <div class="sub">Outlet type එකක් අනුව — නිතර නැති / Low / දිගු කාලයක් නැති items</div>
+    <select class="an-outlet-sel" id="an-outlet" onchange="renderAnalysis()"></select>
+    <div id="analysis-body"></div>
   </div>
 
   <!-- Filters -->
@@ -305,6 +337,7 @@ function openModal(v) {
   if (sec.notes) html += `<div style="font-size:12px;color:#888;font-style:italic;padding:8px 10px;background:#f9f9f9;border-radius:8px;margin-top:10px;">📝 ${sec.notes}</div>`;
 
   html += `<button class="dl-btn" onclick='downloadReport(${JSON.stringify(v).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>📥 Text Report Download</button>`;
+  html += `<button class="dl-btn" style="background:#e53935;margin-top:8px;" onclick='clearVisit(${JSON.stringify(v).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>🗑 Delete This Visit</button>`;
   body.innerHTML = html;
   document.getElementById('modal-overlay').classList.add('open');
 }
@@ -374,6 +407,7 @@ async function loadVisits() {
     populateStoreFilter();
     renderSummary();
     renderStoreTable();
+    renderAnalysisOutlets();
     renderVisits();
     document.getElementById('last-updated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
     document.getElementById('date-lbl').textContent = new Date().toLocaleDateString('en-GB', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
@@ -521,8 +555,169 @@ function renderVisits() {
         ${badge}
       </div>
       <div class="vc-sections">${summaryHTML}${missingHTML}${lowHTML}${expHTML}${compHTML}${notesHTML}</div>
+      <div class="vc-actions">
+        <button class="clear-btn" onclick="event.stopPropagation(); clearVisit(window._filteredVisits[${idx}])">🗑 Clear</button>
+      </div>
     </div>`;
   }).join('');
+}
+
+// ===== DELETE / CLEAR VISIT =====
+async function clearVisit(v) {
+  if (!v) return;
+  const time = new Date(v.savedAt).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+  if (!confirm(`Delete this visit?\n\n🏪 ${v.store}\n👤 ${v.rep}\n🕐 ${time}\n\nමේක server එකෙන් සම්පූර්ණයෙන්ම අයින් වෙනවා.`)) return;
+  try {
+    const resp = await fetch(`${WORKER_URL}/delete-visit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: v._key, savedAt: v.savedAt })
+    });
+    const data = await resp.json();
+    if (!data.success) throw new Error(data.error || 'delete failed');
+    // local list එකෙනුත් අයින් කරලා re-render
+    allVisits = allVisits.filter(x => x.savedAt !== v.savedAt);
+    document.getElementById('modal-overlay').classList.remove('open');
+    populateStoreFilter();
+    renderSummary();
+    renderStoreTable();
+    renderAnalysisOutlets();
+    renderVisits();
+  } catch(e) {
+    alert('⚠ Clear error: ' + e.message);
+  }
+}
+
+// ===== ANALYSIS =====
+// outlet "type" = store name එකේ base part (location එකට කලින්) — "Spar - Kb" -> "Spar"
+function baseOutlet(store) {
+  return store.split(' - ')[0].trim();
+}
+
+function renderAnalysisOutlets() {
+  const box = document.getElementById('analysis');
+  const sel = document.getElementById('an-outlet');
+  const bases = [...new Set(allVisits.map(v => baseOutlet(v.store)))].sort();
+  if (!bases.length) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  const prev = sel.value;
+  sel.innerHTML = bases.map(b => `<option value="${b}">${b} (${allVisits.filter(v => baseOutlet(v.store) === b).length} visits)</option>`).join('');
+  if (bases.includes(prev)) sel.value = prev;
+  renderAnalysis();
+}
+
+function daysAgo(dateStr) {
+  return Math.floor((Date.now() - new Date(dateStr)) / 864e5);
+}
+
+function renderAnalysis() {
+  const base = document.getElementById('an-outlet').value;
+  const body = document.getElementById('analysis-body');
+  const visits = allVisits.filter(v => baseOutlet(v.store) === base);
+  if (!visits.length) { body.innerHTML = '<div class="an-empty">No data</div>'; return; }
+
+  // මේ outlet type එකේ location(store) කීයක් තියෙනවද
+  const locations = [...new Set(visits.map(v => v.store))];
+
+  // location එකකට අලුත්ම visit එක
+  const latestPerLoc = {};
+  visits.forEach(v => {
+    if (!latestPerLoc[v.store] || new Date(v.savedAt) > new Date(latestPerLoc[v.store].savedAt)) {
+      latestPerLoc[v.store] = v;
+    }
+  });
+
+  // ---- item එකක් කී location වල missing/low ද (අලුත්ම visit අනුව) ----
+  const itemStat = {}; // name -> { missLocs:Set, lowLocs:Set, code }
+  Object.values(latestPerLoc).forEach(v => {
+    const sec = getSec(v);
+    (sec.missing || []).forEach(p => {
+      if (!itemStat[p.name]) itemStat[p.name] = { missLocs: new Set(), lowLocs: new Set(), code: p.code };
+      itemStat[p.name].missLocs.add(v.store);
+    });
+    (sec.low || []).forEach(p => {
+      if (!itemStat[p.name]) itemStat[p.name] = { missLocs: new Set(), lowLocs: new Set(), code: p.code };
+      itemStat[p.name].lowLocs.add(v.store);
+    });
+  });
+
+  // ---- item එකක් කී දවසක් තිස්සේ missing ද (එකම location එකේ පිට පිට visits) ----
+  // location එකකට visits date order එකට බලලා, අන්තිම visits වල අඛණ්ඩව missing නම් — කවදා ඉඳන්ද
+  const streak = {}; // name -> { loc, days, since }
+  locations.forEach(loc => {
+    const locVisits = visits.filter(v => v.store === loc).sort((a,b) => new Date(b.savedAt) - new Date(a.savedAt));
+    if (locVisits.length < 1) return;
+    // අලුත්ම visit එකේ missing items
+    const latestMiss = new Set((getSec(locVisits[0]).missing || []).map(p => p.name));
+    latestMiss.forEach(name => {
+      // කවදා ඉඳන් අඛණ්ඩව missing ද — පරණ visits බලනවා
+      let since = locVisits[0].savedAt;
+      for (let i = 1; i < locVisits.length; i++) {
+        const missSet = new Set((getSec(locVisits[i]).missing || []).map(p => p.name));
+        if (missSet.has(name)) since = locVisits[i].savedAt;
+        else break;
+      }
+      const d = daysAgo(since);
+      if (!streak[name] || d > streak[name].days) streak[name] = { loc, days: d, since };
+    });
+  });
+
+  let html = `<div style="font-size:12px;color:#888;margin-bottom:14px;">🏪 ${base} — ${locations.length} location(s): ${locations.map(l => l.replace(base,'').replace(/^ - /,'') || base).join(', ')}</div>`;
+
+  // ---- Recommendations (order කරන්න ඕන) ----
+  const multiMiss = Object.entries(itemStat)
+    .filter(([n, s]) => s.missLocs.size >= 2)
+    .sort((a, b) => b[1].missLocs.size - a[1].missLocs.size);
+  const allLocMiss = multiMiss.filter(([n, s]) => s.missLocs.size === locations.length && locations.length > 1);
+
+  if (allLocMiss.length || multiMiss.length) {
+    html += `<div class="an-block"><h4>🛒 Order කරන්න ඕන (multiple locations)</h4>`;
+    if (allLocMiss.length) {
+      allLocMiss.forEach(([name, s]) => {
+        html += `<div class="an-reco">🔴 <b>${name}</b> — ${base} <b>ඔක්කොම ${locations.length} locations</b> වලම නැත. ඉක්මනට order කරන්න!</div>`;
+      });
+    }
+    multiMiss.filter(([n,s]) => !(s.missLocs.size === locations.length && locations.length > 1)).forEach(([name, s]) => {
+      html += `<div class="an-row urgent"><span class="an-name">${name}</span><span class="an-detail">${[...s.missLocs].map(l=>l.replace(base,'').replace(/^ - /,'')||base).join(', ')}</span><span class="an-pill pill-red">${s.missLocs.size} locations නැත</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  // ---- Long-missing (දිගු කාලයක්) ----
+  const longMiss = Object.entries(streak).filter(([n, s]) => s.days >= 7).sort((a, b) => b[1].days - a[1].days);
+  if (longMiss.length) {
+    html += `<div class="an-block"><h4>⏳ දිගු කාලයක් තිස්සේ නැත (check කරන්න)</h4>`;
+    longMiss.forEach(([name, s]) => {
+      const locShort = s.loc.replace(base,'').replace(/^ - /,'') || base;
+      html += `<div class="an-row urgent"><span class="an-name">${name}</span><span class="an-detail">${locShort}</span><span class="an-pill pill-days">${s.days} days නැත</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  // ---- All current missing / low (latest per location) ----
+  const missNow = Object.entries(itemStat).filter(([n, s]) => s.missLocs.size > 0).sort((a,b) => b[1].missLocs.size - a[1].missLocs.size);
+  const lowNow = Object.entries(itemStat).filter(([n, s]) => s.lowLocs.size > 0).sort((a,b) => b[1].lowLocs.size - a[1].lowLocs.size);
+
+  if (missNow.length) {
+    html += `<div class="an-block"><h4>🔴 දැන් Missing items (${missNow.length})</h4>`;
+    missNow.forEach(([name, s]) => {
+      html += `<div class="an-row"><span class="an-name">${name}</span><span class="an-pill pill-red">${s.missLocs.size}/${locations.length}</span></div>`;
+    });
+    html += `</div>`;
+  }
+  if (lowNow.length) {
+    html += `<div class="an-block"><h4>🟡 Low Stock items (${lowNow.length})</h4>`;
+    lowNow.forEach(([name, s]) => {
+      html += `<div class="an-row"><span class="an-name">${name}</span><span class="an-pill pill-yellow">${s.lowLocs.size}/${locations.length}</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (!missNow.length && !lowNow.length) {
+    html += `<div class="an-reco">✅ ${base} — දැනට missing/low items නැහැ. Full stock!</div>`;
+  }
+
+  body.innerHTML = html;
 }
 
 // Auto refresh every 2 minutes
