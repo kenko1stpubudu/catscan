@@ -91,6 +91,29 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .status-ok { background: #e8f5e9; color: #2e7d32; }
 .status-miss { background: #ffebee; color: #c62828; }
 .status-verify { background: #fff8e1; color: #f57f17; }
+.status-low { background: #fff8e1; color: #f57f17; }
+.avail-qty { font-size: 11px; color: #43a047; font-weight: 600; margin-right: 8px; white-space: nowrap; }
+
+/* Low / expiry / competitor blocks on cards */
+.low-list { margin-top: 8px; padding: 10px; background: #fff8e1; border-radius: 8px; }
+.low-list .ml-title { font-size: 11px; color: #f57f17; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.low-list .ml-item { font-size: 12px; color: #555; padding: 2px 0; display: flex; gap: 6px; }
+.low-list .ml-item::before { content: "•"; color: #f57f17; }
+.exp-list { margin-top: 8px; padding: 10px; background: #fff3e0; border-radius: 8px; }
+.exp-list .ml-title { font-size: 11px; color: #ef6c00; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.exp-list .ml-item { font-size: 12px; color: #555; padding: 2px 0; }
+.exp-list .ml-item .exp-dt { color: #ef6c00; font-weight: 600; }
+.comp-note { margin-top: 8px; font-size: 12px; color: #6a1b9a; padding: 8px 10px; background: #f3e5f5; border-radius: 8px; }
+.badge-low { background: #fff8e1; color: #f57f17; }
+
+/* Modal summary 4 cols */
+.modal-summary.four { grid-template-columns: repeat(4, 1fr); }
+.photo-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.photo-row img { width: 90px; height: 90px; object-fit: cover; border-radius: 10px; border: 1px solid #eee; cursor: pointer; }
+.gps-link { display: inline-block; margin-top: 10px; font-size: 13px; color: #1565c0; text-decoration: none; padding: 8px 12px; background: #e3f2fd; border-radius: 8px; }
+.modal-photo-full { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; cursor: zoom-out; }
+.modal-photo-full.open { display: flex; }
+.modal-photo-full img { max-width: 100%; max-height: 100%; border-radius: 8px; }
 
 /* Summary bar in modal */
 .modal-summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
@@ -132,6 +155,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="sum-card warn"><div class="num" id="s-missing">-</div><div class="lbl">Stores with Missing Items</div></div>
     <div class="sum-card ok"><div class="num" id="s-fullstock">-</div><div class="lbl">Full Stock Stores</div></div>
     <div class="sum-card"><div class="num" id="s-items">-</div><div class="lbl">Total Missing Items</div></div>
+    <div class="sum-card"><div class="num" id="s-low" style="color:#f57f17;">-</div><div class="lbl">Total Low Stock Items</div></div>
   </div>
 
   <!-- Store Summary Table -->
@@ -148,6 +172,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <select class="filter-sel" id="filter-status" onchange="renderVisits()">
       <option value="">All Status</option>
       <option value="missing">Has Missing Items</option>
+      <option value="low">Has Low Stock</option>
       <option value="ok">Full Stock</option>
     </select>
     <span class="date-lbl" id="date-lbl"></span>
@@ -177,8 +202,38 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 </div>
 
+<div class="modal-photo-full" id="photo-full" onclick="this.classList.remove('open')"><img id="photo-full-img" src=""></div>
+
 <script>
 const WORKER_URL = "https://odd-grass-0c29.kenko1st-pubudu.workers.dev";
+
+// ===== DATA HELPERS (new field-tool format) =====
+// visitData = { all: { ok:[{code,name,qty?}], low:[...], missing:[...], expiry:[{code,name,dates:[]}], competitor:"", notes:"" } }
+function getSec(v) {
+  const vd = v.visitData || {};
+  // නව format එකේ "all" key එක; පරණ visits වල වෙන keys තියෙන්න පුළුවන් — merge කරනවා
+  if (vd.all) return vd.all;
+  // legacy: sections කිහිපයක් තිබ්බොත් එකතු කරනවා
+  const merged = { ok: [], low: [], missing: [], expiry: [], competitor: '', notes: '' };
+  Object.values(vd).forEach(sec => {
+    merged.ok.push(...(sec.ok || []));
+    merged.low.push(...(sec.low || []));
+    merged.missing.push(...(sec.missing || []));
+    merged.expiry.push(...(sec.expiry || []));
+    if (sec.notes) merged.notes += (merged.notes ? ' · ' : '') + sec.notes;
+    if (sec.competitor) merged.competitor += (merged.competitor ? ' · ' : '') + sec.competitor;
+  });
+  return merged;
+}
+function cntMissing(v) { return (getSec(v).missing || []).length; }
+function cntLow(v) { return (getSec(v).low || []).length; }
+function cntOk(v) { const s = getSec(v); return (s.ok || []).length; }
+function qtyStr(p) { return p.qty ? ` <span class="avail-qty">×${p.qty}</span>` : ''; }
+
+function showPhoto(src) {
+  document.getElementById('photo-full-img').src = src;
+  document.getElementById('photo-full').classList.add('open');
+}
 let allVisits = [];
 
 function closeModal(e) {
@@ -193,53 +248,70 @@ function openModal(v) {
   document.getElementById('modal-meta').textContent = '👤 ' + v.rep + '  ·  🕐 ' + time;
 
   const body = document.getElementById('modal-body');
-  const visitData = v.visitData || {};
+  const sec = getSec(v);
+  const ok = sec.ok || [], low = sec.low || [], miss = sec.missing || [], exp = sec.expiry || [];
+  const totalItems = ok.length + low.length + miss.length;
 
-  // Count totals
-  let totalOk = 0, totalMiss = 0, totalVerify = 0;
-  Object.values(visitData).forEach(sec => {
-    totalOk += sec.ok?.length || 0;
-    totalMiss += sec.missing?.length || 0;
-    totalVerify += sec.unverified?.length || 0;
-  });
-  const totalItems = totalOk + totalMiss + totalVerify;
-
-  let html = `<div class="modal-summary">
-    <div class="ms-card"><div class="ms-num" style="color:#1a1a1a;">${totalItems}</div><div class="ms-lbl">Total Items</div></div>
-    <div class="ms-card"><div class="ms-num" style="color:#2e7d32;">${totalOk}</div><div class="ms-lbl">Shelf එකේ ඇත</div></div>
-    <div class="ms-card"><div class="ms-num" style="color:#c62828;">${totalMiss}</div><div class="ms-lbl">නැත (Confirmed)</div></div>
+  let html = `<div class="modal-summary four">
+    <div class="ms-card"><div class="ms-num" style="color:#1a1a1a;">${totalItems}</div><div class="ms-lbl">Total Checked</div></div>
+    <div class="ms-card"><div class="ms-num" style="color:#2e7d32;">${ok.length}</div><div class="ms-lbl">✅ ඇත / In</div></div>
+    <div class="ms-card"><div class="ms-num" style="color:#f57f17;">${low.length}</div><div class="ms-lbl">🟡 Low Stock</div></div>
+    <div class="ms-card"><div class="ms-num" style="color:#c62828;">${miss.length}</div><div class="ms-lbl">🔴 නැත / Out</div></div>
   </div>`;
 
-  const sectionNames = { nuts: '🥜 Nuts & Seeds', cashew: '🫘 Cashew & Peanuts' };
+  // GPS removed on field side, but support old data
+  if (v.gps && v.gps.lat) {
+    html += `<a class="gps-link" href="https://maps.google.com/?q=${v.gps.lat},${v.gps.lng}" target="_blank">📍 View location on map</a>`;
+  }
 
-  Object.entries(visitData).forEach(([key, sec]) => {
-    const name = sectionNames[key] || key;
-    const allItems = [
-      ...(sec.ok || []).map(p => ({ ...p, status: 'ok' })),
-      ...(sec.missing || []).map(p => ({ ...p, status: 'miss' })),
-      ...(sec.unverified || []).filter(p => !sec.confirmed?.includes(p.code)).map(p => ({ ...p, status: 'verify' })),
-    ];
+  // Photos
+  if (v.photos && v.photos.length) {
+    html += `<div class="photo-row">` + v.photos.map(src =>
+      `<img src="${src}" onclick="showPhoto('${src}')">`).join('') + `</div>`;
+  }
 
-    if (!allItems.length) return;
+  function itemRow(p, cls, label) {
+    return `<div class="avail-row">
+      <span class="avail-name">${p.name}</span>
+      ${qtyStr(p)}<span class="avail-code">${p.code}</span>
+      <span class="avail-status ${cls}">${label}</span>
+    </div>`;
+  }
 
-    html += `<div class="avail-section"><h3>${name}</h3>`;
-    allItems.forEach(p => {
-      const statusLabel = p.status === 'ok' ? '✅ ඇත' : p.status === 'miss' ? '🔴 නැත' : '🟡 Verify';
-      const statusCls = p.status === 'ok' ? 'status-ok' : p.status === 'miss' ? 'status-miss' : 'status-verify';
-      html += `<div class="avail-row">
-        <span class="avail-name">${p.name}</span>
-        <span class="avail-code">${p.code}</span>
-        <span class="avail-status ${statusCls}">${statusLabel}</span>
-      </div>`;
+  const rows = [
+    ...miss.map(p => itemRow(p, 'status-miss', '🔴 නැත')),
+    ...low.map(p => itemRow(p, 'status-low', '🟡 Low')),
+    ...ok.map(p => itemRow(p, 'status-ok', '✅ ඇත')),
+  ];
+  if (rows.length) html += `<div class="avail-section"><h3>Shelf Availability</h3>${rows.join('')}</div>`;
+
+  // Expiry
+  if (exp.length) {
+    html += `<div class="avail-section"><h3>⏰ Expiry Dates</h3>`;
+    exp.forEach(e => {
+      const dates = (e.dates || []).map(d => {
+        const dt = new Date(d + 'T00:00:00');
+        const soon = (dt - new Date()) < 30*864e5;
+        return `<span class="${soon ? '' : ''}" style="color:${soon ? '#c62828' : '#ef6c00'};font-weight:600;">${fmtD(d)}</span>`;
+      }).join(', ');
+      html += `<div class="avail-row"><span class="avail-name">${e.name}</span><span style="font-size:12px;">${dates}</span></div>`;
     });
+    html += `</div>`;
+  }
 
-    if (sec.notes) html += `<div style="font-size:12px;color:#888;font-style:italic;padding:8px 10px;background:#f9f9f9;border-radius:8px;margin-top:6px;">📝 ${sec.notes}</div>`;
-    html += '</div>';
-  });
+  // Competitor
+  if (sec.competitor) html += `<div class="comp-note">🏷 <b>Competitors:</b> ${sec.competitor}</div>`;
+  // Notes
+  if (sec.notes) html += `<div style="font-size:12px;color:#888;font-style:italic;padding:8px 10px;background:#f9f9f9;border-radius:8px;margin-top:10px;">📝 ${sec.notes}</div>`;
 
-  html += `<button class="dl-btn" onclick="downloadReport(${JSON.stringify(v).replace(/</g,'\u003c')})">📥 Text Report Download</button>`;
+  html += `<button class="dl-btn" onclick='downloadReport(${JSON.stringify(v).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>📥 Text Report Download</button>`;
   body.innerHTML = html;
   document.getElementById('modal-overlay').classList.add('open');
+}
+
+function fmtD(dateStr) {
+  const [y,m,d] = dateStr.split('-');
+  return d + '/' + m + '/' + y;
 }
 
 function downloadReport(v) {
@@ -251,21 +323,35 @@ function downloadReport(v) {
   text += `Date   : ${time}\n`;
   text += `${'='.repeat(40)}\n\n`;
 
-  const sectionNames = { nuts: 'NUTS & SEEDS', cashew: 'CASHEW & PEANUTS' };
-  let totalMiss = 0;
+  const sec = getSec(v);
+  const ok = sec.ok || [], low = sec.low || [], miss = sec.missing || [], exp = sec.expiry || [];
 
-  Object.entries(v.visitData || {}).forEach(([key, sec]) => {
-    const name = sectionNames[key] || key.toUpperCase();
-    text += `${name}\n${'-'.repeat(30)}\n`;
-    (sec.ok || []).forEach(p => { text += `  ✅  ${p.name}\n`; });
-    (sec.missing || []).forEach(p => { text += `  🔴  ${p.name} [MISSING]\n`; totalMiss++; });
-    if (sec.notes) text += `  📝  Note: ${sec.notes}\n`;
+  if (miss.length) {
+    text += `🔴 MISSING (${miss.length})\n${'-'.repeat(30)}\n`;
+    miss.forEach(p => { text += `  • ${p.name}\n`; });
     text += '\n';
-  });
+  }
+  if (low.length) {
+    text += `🟡 LOW STOCK (${low.length})\n${'-'.repeat(30)}\n`;
+    low.forEach(p => { text += `  • ${p.name}${p.qty ? ' ×'+p.qty : ''}\n`; });
+    text += '\n';
+  }
+  if (ok.length) {
+    text += `✅ AVAILABLE (${ok.length})\n${'-'.repeat(30)}\n`;
+    ok.forEach(p => { text += `  • ${p.name}${p.qty ? ' ×'+p.qty : ''}\n`; });
+    text += '\n';
+  }
+  if (exp.length) {
+    text += `⏰ EXPIRY DATES\n${'-'.repeat(30)}\n`;
+    exp.forEach(e => { text += `  • ${e.name} — ${(e.dates||[]).map(fmtD).join(', ')}\n`; });
+    text += '\n';
+  }
+  if (sec.competitor) text += `🏷 Competitors: ${sec.competitor}\n\n`;
+  if (sec.notes) text += `📝 Notes: ${sec.notes}\n\n`;
 
   text += `${'='.repeat(40)}\n`;
-  text += `TOTAL MISSING: ${totalMiss} items\n`;
-  text += `STATUS: ${totalMiss === 0 ? 'FULL STOCK ✅' : 'ACTION REQUIRED ⚠'}\n`;
+  text += `MISSING: ${miss.length}  ·  LOW: ${low.length}\n`;
+  text += `STATUS: ${miss.length === 0 && low.length === 0 ? 'FULL STOCK ✅' : 'ACTION REQUIRED ⚠'}\n`;
 
   const blob = new Blob([text], { type: 'text/plain' });
   const a = document.createElement('a');
@@ -307,8 +393,10 @@ function populateStoreFilter() {
 }
 
 function getTotalMissing(visitData) {
-  if (!visitData) return 0;
-  return Object.values(visitData).reduce((sum, sec) => sum + (sec.missing?.length || 0), 0);
+  return cntMissing({ visitData });
+}
+function getTotalLow(visitData) {
+  return cntLow({ visitData });
 }
 
 function renderSummary() {
@@ -317,11 +405,13 @@ function renderSummary() {
   const withMissing = todayVisits.filter(v => getTotalMissing(v.visitData) > 0);
   const fullStock = todayVisits.filter(v => getTotalMissing(v.visitData) === 0);
   const totalMissingItems = todayVisits.reduce((sum, v) => sum + getTotalMissing(v.visitData), 0);
+  const totalLowItems = todayVisits.reduce((sum, v) => sum + getTotalLow(v.visitData), 0);
 
   document.getElementById('s-visits').textContent = todayVisits.length || allVisits.length;
   document.getElementById('s-missing').textContent = withMissing.length;
   document.getElementById('s-fullstock').textContent = fullStock.length;
   document.getElementById('s-items').textContent = totalMissingItems;
+  document.getElementById('s-low').textContent = totalLowItems;
 }
 
 function renderStoreTable() {
@@ -340,14 +430,19 @@ function renderStoreTable() {
   table.style.display = 'block';
   body.innerHTML = Object.entries(storeMap).map(([store, v]) => {
     const miss = getTotalMissing(v.visitData);
+    const low = getTotalLow(v.visitData);
     const time = new Date(v.savedAt).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
     const date = new Date(v.savedAt).toLocaleDateString('en-GB');
+    const statusHTML = miss > 0
+      ? `<span class="st-miss">🔴 ${miss} missing</span>`
+      : (low > 0 ? `<span style="color:#f57f17;font-weight:600;">🟡 ${low} low</span>` : `<span class="st-ok">✅ Full stock</span>`);
     return `<div class="st-row">
       <div class="st-name">🏪 ${store}</div>
       <div class="st-info">
         <span>👤 ${v.rep}</span>
         <span>🕐 ${date} ${time}</span>
-        <span class="${miss > 0 ? 'st-miss' : 'st-ok'}">${miss > 0 ? '🔴 ' + miss + ' missing' : '✅ Full stock'}</span>
+        ${low > 0 && miss > 0 ? `<span style="color:#f57f17;font-weight:600;">🟡 ${low} low</span>` : ''}
+        ${statusHTML}
       </div>
     </div>`;
   }).join('');
@@ -361,7 +456,8 @@ function renderVisits() {
   let filtered = allVisits;
   if (storeFilter) filtered = filtered.filter(v => v.store === storeFilter);
   if (statusFilter === 'missing') filtered = filtered.filter(v => getTotalMissing(v.visitData) > 0);
-  if (statusFilter === 'ok') filtered = filtered.filter(v => getTotalMissing(v.visitData) === 0);
+  if (statusFilter === 'low') filtered = filtered.filter(v => getTotalLow(v.visitData) > 0);
+  if (statusFilter === 'ok') filtered = filtered.filter(v => getTotalMissing(v.visitData) === 0 && getTotalLow(v.visitData) === 0);
 
   if (!filtered.length) {
     grid.innerHTML = `<div class="empty" style="grid-column:1/-1;"><div class="icon">📭</div><div>No visits found</div></div>`;
@@ -372,42 +468,59 @@ function renderVisits() {
   window._filteredVisits = filtered;
 
   grid.innerHTML = filtered.map((v, idx) => {
-    const totalMiss = getTotalMissing(v.visitData);
+    const sec = getSec(v);
+    const miss = sec.missing || [], low = sec.low || [], ok = sec.ok || [], exp = sec.expiry || [];
+    const totalMiss = miss.length, totalLow = low.length;
     const time = new Date(v.savedAt).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
 
-    const sectionsHTML = v.visitData ? Object.entries(v.visitData).map(([key, sec]) => {
-      const sectionNames = { nuts: '🥜 Nuts & Seeds', cashew: '🫘 Cashew & Peanuts' };
-      const name = sectionNames[key] || key;
-      const miss = sec.missing?.length || 0;
-      const ok = sec.ok?.length || 0;
+    const summaryHTML = `<div class="vc-sec">
+      <span class="vc-sec-name">Shelf status</span>
+      <span class="vc-sec-status">
+        <span class="sec-ok">✅ ${ok.length}</span> &nbsp;
+        <span style="color:#f57f17;font-weight:600;">🟡 ${totalLow}</span> &nbsp;
+        <span class="sec-miss">🔴 ${totalMiss}</span>
+      </span>
+    </div>`;
 
-      let missingHTML = '';
-      if (miss > 0) {
-        missingHTML = `<div class="missing-list">
-          <div class="ml-title">Missing Items</div>
-          ${sec.missing.map(p => `<div class="ml-item">${p.name}</div>`).join('')}
-        </div>`;
-      }
-      const notesHTML = sec.notes ? `<div class="vc-notes">📝 ${sec.notes}</div>` : '';
+    let missingHTML = '';
+    if (totalMiss > 0) {
+      missingHTML = `<div class="missing-list">
+        <div class="ml-title">🔴 Missing (${totalMiss})</div>
+        ${miss.map(p => `<div class="ml-item">${p.name}</div>`).join('')}
+      </div>`;
+    }
+    let lowHTML = '';
+    if (totalLow > 0) {
+      lowHTML = `<div class="low-list">
+        <div class="ml-title">🟡 Low Stock (${totalLow})</div>
+        ${low.map(p => `<div class="ml-item">${p.name}${p.qty ? ' ×'+p.qty : ''}</div>`).join('')}
+      </div>`;
+    }
+    let expHTML = '';
+    if (exp.length > 0) {
+      expHTML = `<div class="exp-list">
+        <div class="ml-title">⏰ Expiry (${exp.length})</div>
+        ${exp.map(e => `<div class="ml-item">${e.name} — <span class="exp-dt">${(e.dates||[]).map(fmtD).join(', ')}</span></div>`).join('')}
+      </div>`;
+    }
+    const compHTML = sec.competitor ? `<div class="comp-note">🏷 ${sec.competitor}</div>` : '';
+    const notesHTML = sec.notes ? `<div class="vc-notes">📝 ${sec.notes}</div>` : '';
+    const photoTag = (v.photos && v.photos.length) ? ` 📷${v.photos.length}` : '';
 
-      return `<div class="vc-sec">
-        <span class="vc-sec-name">${name}</span>
-        <span class="vc-sec-status ${miss > 0 ? 'sec-miss' : 'sec-ok'}">${miss > 0 ? '🔴 ' + miss + ' missing' : '✅ OK'}</span>
-      </div>
-      ${missingHTML}${notesHTML}`;
-    }).join('') : '<div style="font-size:13px;color:#aaa;">No section data</div>';
+    const cardCls = totalMiss > 0 ? 'has-missing' : 'all-ok';
+    const badge = totalMiss > 0
+      ? `<span class="vc-badge badge-miss">${totalMiss} missing</span>`
+      : (totalLow > 0 ? `<span class="vc-badge badge-low">${totalLow} low</span>` : `<span class="vc-badge badge-ok">Full Stock</span>`);
 
-    return `<div class="visit-card ${totalMiss > 0 ? 'has-missing' : 'all-ok'}" onclick="openModal(window._filteredVisits[${idx}])" style="cursor:pointer;" title="Click to view full report">
+    return `<div class="visit-card ${cardCls}" onclick="openModal(window._filteredVisits[${idx}])" style="cursor:pointer;" title="Click to view full report">
       <div class="vc-header">
         <div>
-          <div class="vc-store">🏪 ${v.store}</div>
+          <div class="vc-store">🏪 ${v.store}${photoTag}</div>
           <div class="vc-meta">👤 ${v.rep} &nbsp;·&nbsp; 🕐 ${time}</div>
         </div>
-        <span class="vc-badge ${totalMiss > 0 ? 'badge-miss' : 'badge-ok'}">
-          ${totalMiss > 0 ? totalMiss + ' missing' : 'Full Stock'}
-        </span>
+        ${badge}
       </div>
-      <div class="vc-sections">${sectionsHTML}</div>
+      <div class="vc-sections">${summaryHTML}${missingHTML}${lowHTML}${expHTML}${compHTML}${notesHTML}</div>
     </div>`;
   }).join('');
 }
