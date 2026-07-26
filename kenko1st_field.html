@@ -113,6 +113,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .hist-card pre { display: none; white-space: pre-wrap; font-size: 11px; color: #999; background: #161616; border-radius: 8px; padding: 10px; margin-top: 10px; font-family: 'SF Mono', Menlo, monospace; }
 .hist-card.open pre { display: block; }
 
+/* List editor */
+.le-item { display: flex; align-items: center; gap: 10px; background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 10px; padding: 10px 12px; margin-bottom: 7px; }
+.le-item.added { border-color: #c8f04c44; background: rgba(200,240,76,0.06); }
+.le-item .le-name { flex: 1; font-size: 13px; min-width: 0; }
+.le-item .le-code { font-size: 10px; color: #555; margin-top: 2px; }
+.le-item .le-badge { font-size: 9px; color: #c8f04c; background: rgba(200,240,76,0.12); border-radius: 5px; padding: 1px 5px; margin-left: 6px; }
+.le-rm { background: rgba(255,82,82,0.12); color: #ff5252; border: none; padding: 6px 11px; border-radius: 8px; font-size: 12px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
+.le-search-result { max-height: 260px; overflow-y: auto; margin-top: 4px; }
+.le-sr { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-bottom: 1px solid #ffffff0d; cursor: pointer; }
+.le-sr:hover { background: #1e1e1e; }
+.le-sr .sr-name { flex: 1; font-size: 13px; min-width: 0; }
+.le-sr .sr-add { color: #c8f04c; font-size: 18px; flex-shrink: 0; }
+.le-sr.exists { opacity: 0.4; }
+.le-section-title { font-size: 12px; color: #888; font-weight: 700; margin: 18px 0 8px; }
+
 /* Language switcher */
 .lang-row { display: flex; gap: 6px; justify-content: flex-end; margin-bottom: 14px; }
 .lang-btn { background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 8px; color: #888; font-family: inherit; font-size: 12px; font-weight: 700; padding: 6px 12px; cursor: pointer; }
@@ -144,6 +159,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .exp-chip button { background: none; border: none; color: inherit; cursor: pointer; font-size: 12px; padding: 0; line-height: 1; }
 .exp-add { display: flex; gap: 6px; }
 .exp-add input[type=date] { flex: 1; background: #0f0f0f; border: 1px solid #2a2a2a; border-radius: 7px; color: #f0f0f0; font-family: inherit; font-size: 12px; padding: 7px; outline: none; color-scheme: dark; }
+.exp-add input.exp-qty { width: 70px; background: #0f0f0f; border: 1px solid #2a2a2a; border-radius: 7px; color: #f0f0f0; font-family: inherit; font-size: 12px; padding: 7px; outline: none; }
+.exp-chip .exp-q { background: rgba(255,140,0,0.2); border-radius: 5px; padding: 0 5px; font-weight: 700; }
+.reminder-box .r-line .r-loc { background: rgba(255,140,0,0.18); border-radius: 5px; padding: 1px 6px; font-size: 11px; margin-left: 4px; }
+.reminder-box .r-line .r-qty { color: #ffb74d; font-weight: 600; margin-left: 4px; }
+.reminder-box .r-clear { background: none; border: none; color: #888; cursor: pointer; font-size: 13px; margin-left: 6px; padding: 0 4px; }
+.reminder-box .r-line { display: flex; align-items: center; gap: 2px; }
+.reminder-box .r-line .r-txt { flex: 1; }
 .exp-add button { background: rgba(255,140,0,0.16); color: #ff8c00; border: 1px solid #ff8c0055; border-radius: 7px; padding: 7px 12px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
 .reminder-box { background: rgba(255,140,0,0.1); border: 1px solid #ff8c0044; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #ff8c00; margin-bottom: 14px; display: none; }
 .reminder-box .r-line { padding: 2px 0; color: #d0d0d0; font-size: 12px; }
@@ -258,6 +280,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div style="font-size:12px;color:#555;margin-bottom:10px;" id="lbl-manage">⚙ Stores Manage</div>
       <button class="btn-full btn-dark" id="btn-managestores" onclick="goTo('s-manage')" style="font-size:13px;padding:11px;">+ Add / Remove Stores</button>
       <button class="btn-full btn-dark" id="btn-history" onclick="goTo('s-history')" style="font-size:13px;padding:11px;">📖 My Visit History</button>
+      <button class="btn-full btn-dark" id="btn-listedit" onclick="goTo('s-listedit')" style="font-size:13px;padding:11px;">📝 Edit Item Lists</button>
     </div>
   </div>
 </div>
@@ -385,6 +408,34 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div id="store-list-manage"></div>
 </div>
 
+<!-- SCREEN: ITEM LIST EDITOR -->
+<div class="screen" id="s-listedit">
+  <div class="top-bar">
+    <h1 id="le-title">Edit Lists</h1>
+    <button class="back-btn" onclick="goTo('s-login')">← Back</button>
+  </div>
+
+  <div id="le-outlet-label" style="font-size:12px;color:#888;margin-bottom:6px;">Outlet</div>
+  <select id="le-outlet" class="login-select" onchange="renderListEditor()" style="margin-bottom:8px;"></select>
+  <div id="le-count" style="font-size:12px;color:#c8f04c;margin-bottom:16px;"></div>
+
+  <div class="le-section-title" id="le-add-title">➕ Add item</div>
+  <input type="text" id="le-search" class="login-select" placeholder="🔍 Search..." autocomplete="off" oninput="renderLeSearch()" style="margin-bottom:6px;">
+  <div class="le-search-result" id="le-search-result"></div>
+
+  <div id="le-manual-wrap" style="display:none;background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:12px;margin-top:10px;">
+    <div style="font-size:12px;color:#888;margin-bottom:8px;" id="le-manual-title">✍ New item type කරන්න</div>
+    <input type="text" id="le-manual-name" class="login-select" placeholder="Item name" autocomplete="off" style="margin-bottom:8px;">
+    <div style="display:flex;gap:8px;">
+      <input type="text" id="le-manual-code" class="login-select" placeholder="Barcode (optional)" autocomplete="off" inputmode="numeric" style="flex:1;margin-bottom:0;">
+      <button onclick="addManualItem()" style="background:#c8f04c;color:#0f0f0f;border:none;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px;" id="le-manual-btn">Add</button>
+    </div>
+  </div>
+
+  <div class="le-section-title" id="le-current-title">📋 Current items</div>
+  <div id="le-list"></div>
+</div>
+
 <script>
 // ===== LANGUAGE / i18n =====
 let LANG = localStorage.getItem('kenko_lang') || 'si';
@@ -421,7 +472,13 @@ si: {
   tagToday:' · අද', tagPast:' · ගිය', planAdded:'🗓 Plan එකට add කළා ✓', planDup:'⚠ ඒ visit එක දැනටමත් plan එකේ තියෙනවා',
   planNeed:'Date එකයි store එකයි select කරන්න', planDoneToast:'🗓 Plan එකේ visit එක ✓ mark වුණා',
   storeExists:'⚠ "{}" already exists', remove:'Remove', typeHint:'Product list type එක select කරන්න — ඒ list එකේ items තමයි scan වෙන්නේ',
-  newStorePh:'New store name...'
+  newStorePh:'New store name...',
+  btnListEdit:'📝 Item Lists Edit කරන්න', leTitle:'Item Lists Edit', leOutlet:'Outlet එක තෝරන්න',
+  leAddTitle:'➕ Item එකක් add කරන්න', leCurrentTitle:'📋 දැන් තියෙන items', leSearchPh:'🔍 Master list එකෙන් හොයන්න...',
+  leManualTitle:'✍ Master list එකේ නැද්ද? අතින් type කරන්න', leManualPh:'අලුත් නමක් type කරන්න',
+  leCount:'මුළු items {}ක්', leAdded:'rep add', leItemAdded:'✓ Item add කළා', leItemRemoved:'Item අයින් කළා',
+  leNeedName:'Item නමක් type කරන්න', leDup:'⚠ ඒ item එක දැනටමත් list එකේ තියෙනවා',
+  expQtyPh:'කීයක්?', expQtyUnit:'ක්', remClear:'බලලා ඉවරයි — clear කරන්න'
 },
 ta: {
   lblRep:'பிரதிநிதி பெயர்', selectRep:'-- Rep தேர்வு செய்க --', lblStore:'கடை (Store)', selectStore:'-- Store தேர்வு செய்க --',
@@ -454,7 +511,13 @@ ta: {
   tagToday:' · இன்று', tagPast:' · கடந்தது', planAdded:'🗓 Plan-இல் சேர்க்கப்பட்டது ✓', planDup:'⚠ அந்த visit ஏற்கனவே plan-இல் உள்ளது',
   planNeed:'Date மற்றும் store தேர்வு செய்யவும்', planDoneToast:'🗓 Plan-இல் visit ✓ mark ஆனது',
   storeExists:'⚠ "{}" ஏற்கனவே உள்ளது', remove:'Remove', typeHint:'Product list type தேர்வு செய்யவும் — அந்த list-இன் items தான் scan ஆகும்',
-  newStorePh:'புதிய store பெயர்...'
+  newStorePh:'புதிய store பெயர்...',
+  btnListEdit:'📝 Item Lists Edit', leTitle:'Item Lists Edit', leOutlet:'Outlet தேர்வு செய்யவும்',
+  leAddTitle:'➕ Item ஒன்று சேர்க்க', leCurrentTitle:'📋 தற்போதைய items', leSearchPh:'🔍 Master list-இல் தேடவும்...',
+  leManualTitle:'✍ Master list-இல் இல்லையா? கையால் type செய்யவும்', leManualPh:'புதிய பெயரை type செய்யவும்',
+  leCount:'மொத்தம் {} items', leAdded:'rep add', leItemAdded:'✓ Item சேர்க்கப்பட்டது', leItemRemoved:'Item நீக்கப்பட்டது',
+  leNeedName:'Item பெயரை type செய்யவும்', leDup:'⚠ அந்த item ஏற்கனவே list-இல் உள்ளது',
+  expQtyPh:'எத்தனை?', expQtyUnit:'', remClear:'பார்த்து முடிந்தது — clear செய்யவும்'
 },
 en: {
   lblRep:'Rep Name', selectRep:'-- Select Rep --', lblStore:'Store', selectStore:'-- Select Store --',
@@ -487,7 +550,13 @@ en: {
   tagToday:' · today', tagPast:' · past', planAdded:'🗓 Added to plan ✓', planDup:'⚠ That visit is already in the plan',
   planNeed:'Select a date and store', planDoneToast:'🗓 Plan visit marked ✓',
   storeExists:'⚠ "{}" already exists', remove:'Remove', typeHint:'Select the product list type — those items will be scanned',
-  newStorePh:'New store name...'
+  newStorePh:'New store name...',
+  btnListEdit:'📝 Edit Item Lists', leTitle:'Edit Item Lists', leOutlet:'Select outlet',
+  leAddTitle:'➕ Add an item', leCurrentTitle:'📋 Current items', leSearchPh:'🔍 Search the master list...',
+  leManualTitle:'✍ Not in the master list? Type it manually', leManualPh:'type a new name',
+  leCount:'{} items total', leAdded:'rep add', leItemAdded:'✓ Item added', leItemRemoved:'Item removed',
+  leNeedName:'Type an item name', leDup:'⚠ That item is already in the list',
+  expQtyPh:'Qty?', expQtyUnit:'', remClear:'Checked — clear it'
 }
 };
 
@@ -535,6 +604,9 @@ function applyLang() {
   T('fin-title','finTitle'); T('lbl-preview','lblPreview'); T('btn-share','btnShare'); T('btn-copy','btnCopy'); T('btn-new','btnNew');
   T('lbl-typehint','typeHint'); P('new-store-input','newStorePh');
   T('tab-visits','tabHistory'); T('tab-plan','tabPlan'); T('lbl-planform','lblPlanForm'); P('plan-loc','planLocPh');
+  T('btn-listedit','btnListEdit'); T('le-title','leTitle'); T('le-outlet-label','leOutlet');
+  T('le-add-title','leAddTitle'); T('le-current-title','leCurrentTitle'); P('le-search','leSearchPh');
+  T('le-manual-title','leManualTitle'); P('le-manual-name','leManualPh'); T('le-manual-btn','add');
 
   // dynamic areas re-render
   populateStoreSelect();
@@ -583,41 +655,42 @@ const DEFAULT_STORE_TYPES = {
 // Product lists per outlet type (from out_lat_list.xlsx)
 const STORE_ITEMS = {
   spar: [
-    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
-    { code: "4793001555858", name: "Brain Booster 100g" },
-    { code: "4793001555926", name: "Nut & Fruits Mix 100g" },
-    { code: "4793001555896", name: "Roasted Seed And Nuts Snack 100g" },
-    { code: "4793001555377", name: "Flax Seed 100g" },
-    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
-    { code: "4796033640011", name: "Dried Golden Raisins 100g" },
-    { code: "4793001555490", name: "Dried Plums 100g" },
-    { code: "4793001555704", name: "Nut & Fruits Mix 50g" },
+    { code: "6103738486209", name: "Premium Ceylon Cashew- Roasted 75g" },
+    { code: "4793001555582", name: "Premium Ceylon Cashew -burnt 75g" },
+    { code: "4793001555575", name: "Premium Ceylon Cashew- Devilled 75g" },
     { code: "4793001555766", name: "Premium Three Nuts 75g" },
-    { code: "6103738486209", name: "Ceylon Cashew Roasted 75g" },
-    { code: "4793001555483", name: "Blueberry 85g" },
-    { code: "4793001555414", name: "Walnut 85g" },
-    { code: "4793001555353", name: "Pistachio 85g" },
-    { code: "4793001555582", name: "Ceylon Cashew Burnt 75g" },
-    { code: "4793001555360", name: "Almond 100g" },
-    { code: "4793001555254", name: "Almond 45g" },
-    { code: "4793001555889", name: "Chocolate With Three Nuts 100g" },
-    { code: "4793001555032", name: "Basil Seed 100g" },
     { code: "4793001555391", name: "Organic Roasted Peanuts 200g" },
+    { code: "4793001555070", name: "Kithul Jaggery Peanuts 100g" },
+    { code: "4793001555087", name: "Devilled Peanuts 100g" },
+    { code: "4793001555858", name: "Brain Booster 100g" },
+    { code: "4793001555896", name: "Roasted Seed & Nuts 100g" },
+    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
+    { code: "4793001555889", name: "Chocolate With 3 Nuts 100g" },
+    { code: "4793001555926", name: "Nuts & Fruits Mix 100g" },
+    { code: "4793001555704", name: "Nut & Fruits Mix 50g" },
+    { code: "4793001555414", name: "Walnut 85g" },
+    { code: "4793001555353", name: "Pistachios 85g" },
+    { code: "4793001555254", name: "Almond 45g" },
+    { code: "4793001555360", name: "Almond 100g" },
+    { code: "4793001555247", name: "Cranberry 45g" },
     { code: "4793001555445", name: "Cranberries 100g" },
+    { code: "4793001555490", name: "Dried Plums 100g" },
+    { code: "4796033640011", name: "Dried Golden Raisins 100g" },
+    { code: "4793001555483", name: "Dried Blueberry 85g" },
+    { code: "4793001555100", name: "Dried Apricots 85g" },
+    { code: "4793001555032", name: "Basil Seeds (Kasa Kasa)100g" },
     { code: "4793001555049", name: "Chia Seeds 100g" },
-    { code: "4793001555247", name: "Cranberries 45g" },
-    { code: "4793001555575", name: "Ceylon Cashew Devilled 75g" },
-    { code: "4793001555100", name: "Apricot 85g" },
+    { code: "4793001555377", name: "Flax Seeds 100g" },
+    { code: "4793001555384", name: "Green Pumpkin Seeds 100g" },
   ],
   healthguard: [
-    { code: "4793001555858", name: "Brain Booster 100g" },
-    { code: "4793001555049", name: "Chia Seeds 100g" },
-    { code: "4793001555445", name: "Cranberries 100g" },
-    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
-    { code: "4793001555926", name: "Nut & Fruits Mix 100g" },
-    { code: "4793001555872", name: "Psyllium Husk 100g" },
     { code: "4793001555360", name: "Almond 100g" },
-    { code: "4793001555353", name: "Pistachio 85g" },
+    { code: "4793001555445", name: "Cranberry 100g" },
+    { code: "4793001555926", name: "Nut Fruit 100g" },
+    { code: "4793001555858", name: "Brain Booster 100g" },
+    { code: "4793001555872", name: "Psyllium Husk 100g" },
+    { code: "4793001555384", name: "Green Pumpkin Seed 100g" },
+    { code: "4793001555049", name: "Chia Seeds 100g" },
   ],
   jeewaka: [
     { code: "4793001555902", name: "Natural High Protein Mix 100g" },
@@ -661,16 +734,23 @@ const STORE_ITEMS = {
   ],
   cfc: [
     { code: "4793001555858", name: "Brain Booster 100g" },
-    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
+    { code: "4793001555896", name: "Roasted Seed Nut 100g" },
     { code: "4793001555902", name: "Natural High Protein Mix 100g" },
-    { code: "4793001555926", name: "Nut & Fruits Mix 100g" },
-    { code: "4793001555414", name: "Walnut 85g" },
+    { code: "4793001555889", name: "Chocolate With Nuts 100g" },
+    { code: "4793001555414", name: "Walnut 100g" },
     { code: "4793001555360", name: "Almond 100g" },
-    { code: "4793001555049", name: "Chia Seeds 100g" },
-    { code: "4793001555377", name: "Flax Seed 100g" },
-    { code: "4796033640134", name: "Green Sweet Stevia Powder 100g" },
-    { code: "4793001555889", name: "Chocolate With Three Nuts 100g" },
     { code: "4793001555445", name: "Cranberries 100g" },
+    { code: "4793001555483", name: "Dried Blueberry 100g" },
+    { code: "4793001555100", name: "Dried Apricots 100g" },
+    { code: "4793001555032", name: "Basil Seeds 100g" },
+    { code: "4793001555049", name: "Chia Seeds 100g" },
+    { code: "4793001555377", name: "Flax Seeds 100g" },
+    { code: "4793001555384", name: "Green Pumpkin Seeds 100g" },
+    { code: "4793001555056", name: "Sunflower Seeds 100g" },
+    { code: "4793001555698", name: "Moringa Powder 100g" },
+    { code: "4796033640264", name: "Belimal Herbal Tea 100g" },
+    { code: "4796003267286", name: "Cinnamon Tea 12 Bag" },
+    { code: "4796033640257", name: "Blue Butterfly Pea 12 Bag" },
   ],
   ovita: [
     { code: "4793001555360", name: "Almond 100g" },
@@ -735,36 +815,75 @@ const STORE_ITEMS = {
     { code: "4793001555391", name: "Organic Roasted Peanuts 200g" },
   ],
   nw: [
+    { code: "4796033640295", name: "Ceylon Coffee Dark Roasted 100g" },
+    { code: "4796033640271", name: "Ceylon Coffee Medium Roasted 100g" },
+    { code: "4796033640004", name: "Sago 200g" },
+    { code: "4796033640028", name: "Barley 200g" },
+    { code: "4796033640226", name: "Moringa 60 Tablet" },
+    { code: "4796033640233", name: "Moringa 60 Capsule" },
+    { code: "4796033640011", name: "Golden Raisins 100g" },
     { code: "4793001555360", name: "Almond 100g" },
-    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
     { code: "4793001555858", name: "Brain Booster 100g" },
-    { code: "4793001555926", name: "Nut & Fruits Mix 100g" },
-    { code: "4793001555889", name: "Chocolate With Three Nuts 100g" },
-    { code: "4793001555896", name: "Roasted Seed And Nuts Snack 100g" },
-    { code: "4793001555490", name: "Dried Plums 100g" },
-    { code: "4793001555414", name: "Walnut 85g" },
-    { code: "4793001555445", name: "Cranberries 100g" },
+    { code: "4793001555902", name: "High Protein 100g" },
+    { code: "4793001555926", name: "Nuts & Fruits Mix 100g" },
+    { code: "4793001555889", name: "Chocolate 3 Nuts 100g" },
+    { code: "4793001555896", name: "Roasted Seed & Nuts 100g" },
     { code: "4793001555384", name: "Pumpkin Seeds 100g" },
-    { code: "4793001319523", name: "Roasted Cashew Nut 100g" },
-    { code: "4793001319697", name: "Devilled Cashew Nut 100g" },
-    { code: "4793001319529", name: "Cashew Nuts Sugar Coated 100g" },
-    { code: "4793001555483", name: "Blueberry 85g" },
-    { code: "4793001555377", name: "Flax Seed 100g" },
+    { code: "4793001555100", name: "Dried Apricots 85g" },
+    { code: "4793001555483", name: "Dried Blueberry 85g" },
+    { code: "4793001555032", name: "Basil Seed 100g" },
+    { code: "4793001319659", name: "Black Cumin 100g" },
     { code: "4793001555063", name: "Black Raisins 100g" },
-    { code: "4793001555353", name: "Pistachio 85g" },
     { code: "4793001555049", name: "Chia Seeds 100g" },
+    { code: "4793001555988", name: "Chickpea 400g" },
+    { code: "4793001555445", name: "Cranberry 100g" },
+    { code: "4793001555490", name: "Dried Plums 100g" },
+    { code: "4793001555377", name: "Flax Seed 100g" },
+    { code: "4793001555353", name: "Pistachio 85g" },
+    { code: "4793001555407", name: "Quinoa Seeds 200g" },
+    { code: "4793001555056", name: "Sunflower Seed 100g" },
+    { code: "4793001555414", name: "Walnuts 85g" },
+    { code: "4793001555766", name: "Premium Nuts Mix 75g" },
+    { code: "4793001319515", name: "Burnt Cashew 100g" },
+    { code: "4793001319523", name: "Roasted Cashew 100g" },
+    { code: "4793001319697", name: "Devilled Cashew 100g" },
+    { code: "4793001319521", name: "Garlic Cashew 100g" },
+    { code: "4793001319517", name: "Chilli Garlic 100g" },
+    { code: "4793001319529", name: "Sugar Coated Cashew 100g" },
+    { code: "9477359650686", name: "Little T's Devilled Peanut" },
+    { code: "4793001319546", name: "Little T's Kithul Peanut" },
+    { code: "4793001319570", name: "Little T's Oven Peanut" },
+    { code: "4793001319539", name: "Bee Honey Special 300g" },
+    { code: "6103738486296", name: "Bee Honey 460g" },
+    { code: "4793001555834", name: "Bee Honey 140g" },
+    { code: "4797001054304", name: "King Coconut Water 300ml" },
+    { code: "4793001555315", name: "Kithul Honey 250ml" },
+    { code: "4793001555018", name: "Kithul Honey 500ml" },
+    { code: "4793001555230", name: "Cinnamon Powder 100g" },
+    { code: "4793001555124", name: "Ginger Powder 100g" },
+    { code: "4793001555698", name: "Moringa Powder 100g" },
+    { code: "4793001555797", name: "Red Cowpea 250g" },
+    { code: "4793001555803", name: "White Cowpea 250g" },
+    { code: "4793001555810", name: "Green Gram 250g" },
+    { code: "4793001555933", name: "Suwadel Rice 1kg" },
+    { code: "4793001319563", name: "Lanka Basmathi Rice 1kg (sudu Aruna Sahal)" },
+    { code: "4793001555964", name: "Turmeric Powder 100g" },
     { code: "4793001555612", name: "Kurakkan Flour 300g" },
     { code: "4793001555629", name: "Kithul Flour 200g" },
+    { code: "4793001319139", name: "Habalapethi 150g" },
+    { code: "4793001319513", name: "Black Sesame 100g" },
     { code: "4793001555117", name: "White Sesame 200g" },
-    { code: "4793001319513", name: "Black Sesame Seed 100g" },
-    { code: "4793001555506", name: "Rice Flakes 150g" },
-    { code: "4793001319515", name: "Burnt Cashew Nuts 100g" },
-    { code: "4793001319521", name: "Cashew Nuts Garlic 100g" },
-    { code: "4793001319517", name: "Cashew Nuts Chilli Garlic 100g" },
-    { code: "4793001555100", name: "Apricot 85g" },
-    { code: "4793001555766", name: "Premium Three Nuts 75g" },
-    { code: "4793001555056", name: "Sunflower Seed 100g" },
-    { code: "4793001555032", name: "Basil Seed 100g" },
+    { code: "4793001319122", name: "Porridge 150g" },
+    { code: "4793001319510", name: "Ashwagandha Powder 50g" },
+    { code: "4793001319542", name: "Heenbovitiya Powder 50g" },
+    { code: "4793001319599", name: "Nelli Powder 50g" },
+    { code: "4793001319601", name: "Yaki Narag Powder 50g" },
+    { code: "4793001319545", name: "Katupila Powder 50g" },
+    { code: "4793001319549", name: "Lunuwila Powder 50g" },
+    { code: "4793001319617", name: "Papaya Leaf Powder 50g" },
+    { code: "4793001319664", name: "Welpenela Powder 50g" },
+    { code: "4793001319598", name: "Belimal Powder 50g" },
+    { code: "4793001319619", name: "Ranawara Mal Powder 50g" },
   ],
   shade: [
     { code: "4793001555353", name: "Pistachio 85g" },
@@ -777,46 +896,57 @@ const STORE_ITEMS = {
   ],
   mawella: [
     { code: "4793001555858", name: "Brain Booster 100g" },
+    { code: "4793001555896", name: "Roasted Seed & Nuts 100g" },
     { code: "4793001555902", name: "Natural High Protein Mix 100g" },
-    { code: "4793001555889", name: "Chocolate With Three Nuts 100g" },
-    { code: "4793001555926", name: "Nut & Fruits Mix 100g" },
+    { code: "4793001555889", name: "Chocolate With 3 Nuts 100g" },
+    { code: "4793001555926", name: "Nuts & Fruits Mix 100g" },
     { code: "4793001555414", name: "Walnut 85g" },
+    { code: "4793001555384", name: "Green Pumpkin Seeds 100g" },
     { code: "4793001555360", name: "Almond 100g" },
-    { code: "4793001555353", name: "Pistachio 85g" },
+    { code: "4793001555353", name: "Pistachios 100g" },
+    { code: "4793001555483", name: "Dried Blueberry 85g" },
+    { code: "4793001555100", name: "Dried Apricots 85g" },
+    { code: "4793001555063", name: "Black Raisin 100g" },
     { code: "4793001555445", name: "Cranberries 100g" },
-    { code: "4793001555100", name: "Apricot 85g" },
-    { code: "4793001555063", name: "Black Raisins 100g" },
     { code: "4793001555049", name: "Chia Seeds 100g" },
-    { code: "4793001555377", name: "Flax Seed 100g" },
-    { code: "4793001555896", name: "Roasted Seed And Nuts Snack 100g" },
-    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
-    { code: "4793001555056", name: "Sunflower Seed 100g" },
-    { code: "4793001555483", name: "Blueberry 85g" },
-    { code: "4793001555032", name: "Basil Seed 100g" },
+    { code: "4793001555377", name: "Flax Seeds 100g" },
+    { code: "4793001555056", name: "Sunflower Seeds 100g" },
+    { code: "4793001555032", name: "Basil Seeds (Kasa Kasa)100g" },
   ],
   diligez: [
-    { code: "4793001555902", name: "Natural High Protein Mix 100g" },
-    { code: "4793001555926", name: "Nut & Fruits Mix 100g" },
-    { code: "4793001555353", name: "Pistachio 85g" },
-    { code: "4793001555896", name: "Roasted Seed And Nuts Snack 100g" },
-    { code: "4793001555414", name: "Walnut 85g" },
-    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
-    { code: "4793001555056", name: "Sunflower Seed 100g" },
-    { code: "4793001555032", name: "Basil Seed 100g" },
+    { code: "4796033640295", name: "Ceylon Coffee Dark Roasted 100g" },
+    { code: "4796033640271", name: "Ceylon Coffee Medium Roasted 100g" },
+    { code: "4796033640226", name: "Moringa 60 Tablet" },
+    { code: "4796033640233", name: "Moringa 60 Capsule" },
     { code: "4793001555360", name: "Almond 100g" },
-    { code: "4793001555254", name: "Almond 45g" },
-    { code: "4793001555483", name: "Blueberry 85g" },
+    { code: "4793001555254", name: "Almond 50g" },
     { code: "4793001555858", name: "Brain Booster 100g" },
+    { code: "4793001555902", name: "High Protein 100g" },
+    { code: "4793001555926", name: "Nuts & Fruits Mix 100g" },
+    { code: "4793001555889", name: "Chocolate 3 Nuts 100g" },
+    { code: "4793001555896", name: "Roasted Seed & Nuts 100g" },
+    { code: "4793001555384", name: "Pumpkin Seeds 100g" },
+    { code: "4793001555100", name: "Dried Apricots 85g" },
+    { code: "4793001555483", name: "Dried Blueberry 85g" },
+    { code: "4793001555032", name: "Basil Seed 100g" },
+    { code: "4793001555063", name: "Black Raisins 100g" },
     { code: "4793001555049", name: "Chia Seeds 100g" },
-    { code: "4793001555445", name: "Cranberries 100g" },
-    { code: "4793001555247", name: "Cranberries 45g" },
-    { code: "4793001555377", name: "Flax Seed 100g" },
-    { code: "4793001555704", name: "Nut & Fruits Mix 50g" },
+    { code: "4793001555445", name: "Cranberry 100g" },
+    { code: "4793001555247", name: "Cranberry 45g" },
+    { code: "4793001555704", name: "Nut Fruit 50g" },
     { code: "4793001555490", name: "Dried Plums 100g" },
-    { code: "4793001555766", name: "Premium Three Nuts 75g" },
-    { code: "4796033640202", name: "Ceylon Coffee Bean Dark Roast 100g" },
-    { code: "4796033640196", name: "Ceylon Coffee Bean Medium Roast 100g" },
-    { code: "4793001555889", name: "Chocolate With Three Nuts 100g" },
+    { code: "4793001555377", name: "Flax Seed 100g" },
+    { code: "4793001555353", name: "Pistachio 85g" },
+    { code: "4793001555056", name: "Sunflower Seed 100g" },
+    { code: "4793001555414", name: "Walnuts 85g" },
+    { code: "4793001555766", name: "Premium Nuts Mix 75g" },
+    { code: "4793001555070", name: "Kithul Peanut" },
+    { code: "4793001555087", name: "Devilled Peanut" },
+    { code: "4793001555230", name: "Cinnamon Powder 100g" },
+    { code: "4793001555261", name: "Cinnamon Sticks" },
+    { code: "4793001555124", name: "Ginger Powder 100g" },
+    { code: "4793001555698", name: "Moringa Powder 100g" },
+    { code: "4793001555964", name: "Turmeric Powder 100g" },
   ],
 };
 
@@ -831,11 +961,156 @@ function getStoreType(storeName) {
   return storeTypes[base] || 'spar';
 }
 
+// ===== ITEM LIST OVERRIDES (rep-editable, per outlet type) =====
+// { outletKey: { add: [{code,name}], remove: ["code", ...] } }
+function loadOverrides() { return JSON.parse(localStorage.getItem('kenko_item_overrides_v1') || '{}'); }
+function saveOverrides(o) { localStorage.setItem('kenko_item_overrides_v1', JSON.stringify(o)); }
+
+// outlet type එකකට අදාළ final item list (base + rep edits)
+function itemsForType(typeKey) {
+  const base = STORE_ITEMS[typeKey] || [];
+  const ov = loadOverrides()[typeKey] || { add: [], remove: [] };
+  const removeSet = new Set(ov.remove || []);
+  const out = base.filter(p => !removeSet.has(p.code));
+  const haveCodes = new Set(out.map(p => p.code));
+  (ov.add || []).forEach(p => { if (!haveCodes.has(p.code)) { out.push(p); haveCodes.add(p.code); } });
+  return out;
+}
+
 function getStoreItems(storeName) {
-  return STORE_ITEMS[getStoreType(storeName)] || STORE_ITEMS.spar;
+  return itemsForType(getStoreType(storeName));
+}
+
+// සියලුම outlets වල items එකතු කරපු පොදු master list (code අනුව unique)
+function masterItemList() {
+  const map = new Map();
+  Object.values(STORE_ITEMS).forEach(list => list.forEach(p => { if (!map.has(p.code)) map.set(p.code, p); }));
+  // rep add කරපු custom items ටිකත් master list එකට
+  const ov = loadOverrides();
+  Object.values(ov).forEach(o => (o.add || []).forEach(p => { if (!map.has(p.code)) map.set(p.code, p); }));
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 
+
+// ===== LIST EDITOR =====
+let leType = '';  // currently editing outlet type
+
+function openListEditor() {
+  const sel = document.getElementById('le-outlet');
+  sel.innerHTML = Object.entries(LIST_TYPES).map(([k, label]) =>
+    `<option value="${k}">${label}</option>`).join('');
+  if (!leType) leType = sel.value;
+  sel.value = leType;
+  document.getElementById('le-search').value = '';
+  document.getElementById('le-manual-name').value = '';
+  document.getElementById('le-manual-code').value = '';
+  renderListEditor();
+}
+
+function renderListEditor() {
+  const selVal = document.getElementById('le-outlet').value;
+  if (selVal) leType = selVal;
+  const items = itemsForType(leType);
+  const ov = loadOverrides()[leType] || { add: [], remove: [] };
+  const addedCodes = new Set((ov.add || []).map(p => p.code));
+
+  document.getElementById('le-count').textContent = t('leCount', items.length);
+
+  const list = document.getElementById('le-list');
+  list.innerHTML = items.map(p => `
+    <div class="le-item ${addedCodes.has(p.code) ? 'added' : ''}">
+      <div class="le-name">${p.name}${addedCodes.has(p.code) ? `<span class="le-badge">${t('leAdded')}</span>` : ''}
+        <div class="le-code">${p.code}</div>
+      </div>
+      <button class="le-rm" onclick="removeItemFromList('${p.code}')">${t('remove')}</button>
+    </div>`).join('');
+
+  renderLeSearch();
+}
+
+function renderLeSearch() {
+  const term = document.getElementById('le-search').value.trim().toLowerCase();
+  const box = document.getElementById('le-search-result');
+  const manual = document.getElementById('le-manual-wrap');
+  if (!term) { box.innerHTML = ''; manual.style.display = 'none'; return; }
+
+  const currentCodes = new Set(itemsForType(leType).map(p => p.code));
+  const matches = masterItemList().filter(p => p.name.toLowerCase().includes(term)).slice(0, 30);
+
+  box.innerHTML = matches.map(p => {
+    const has = currentCodes.has(p.code);
+    return `<div class="le-sr ${has ? 'exists' : ''}" ${has ? '' : `onclick="addItemToList('${p.code}')"`}>
+      <div class="sr-name">${p.name}<div class="le-code">${p.code}</div></div>
+      <div class="sr-add">${has ? '✓' : '＋'}</div>
+    </div>`;
+  }).join('');
+
+  // master list එකේ නැති නම් manual add box එක පෙන්නනවා
+  manual.style.display = 'block';
+  if (!document.getElementById('le-manual-name').value) {
+    // search term එක manual name එකට suggestion විදිහට
+    document.getElementById('le-manual-name').placeholder = '"' + document.getElementById('le-search').value.trim() + '" — ' + t('leManualPh');
+  }
+}
+
+function addItemToList(code) {
+  const master = masterItemList().find(p => p.code === code);
+  if (!master) return;
+  const ov = loadOverrides();
+  if (!ov[leType]) ov[leType] = { add: [], remove: [] };
+  // remove list එකේ තිබ්බොත් අයින් කරනවා (නැවත add නිසා)
+  ov[leType].remove = (ov[leType].remove || []).filter(c => c !== code);
+  // base එකේ නැත්නම් විතරක් add list එකට
+  const inBase = (STORE_ITEMS[leType] || []).some(p => p.code === code);
+  if (!inBase && !(ov[leType].add || []).some(p => p.code === code)) {
+    ov[leType].add = ov[leType].add || [];
+    ov[leType].add.push(master);
+  }
+  saveOverrides(ov);
+  document.getElementById('le-search').value = '';
+  renderListEditor();
+  showToast(t('leItemAdded'));
+}
+
+function addManualItem() {
+  const name = document.getElementById('le-manual-name').value.trim();
+  let code = document.getElementById('le-manual-code').value.trim();
+  if (!name) { showToast(t('leNeedName')); return; }
+  // code නැත්නම් auto-generate (custom prefix)
+  if (!code) code = 'C' + Date.now();
+  if (itemsForType(leType).some(p => p.code === code)) { showToast(t('leDup')); return; }
+  const ov = loadOverrides();
+  if (!ov[leType]) ov[leType] = { add: [], remove: [] };
+  ov[leType].remove = (ov[leType].remove || []).filter(c => c !== code);
+  ov[leType].add = ov[leType].add || [];
+  ov[leType].add.push({ code, name });
+  saveOverrides(ov);
+  document.getElementById('le-manual-name').value = '';
+  document.getElementById('le-manual-code').value = '';
+  document.getElementById('le-search').value = '';
+  renderListEditor();
+  showToast(t('leItemAdded'));
+}
+
+function removeItemFromList(code) {
+  const ov = loadOverrides();
+  if (!ov[leType]) ov[leType] = { add: [], remove: [] };
+  // rep add කරපු එකක් නම් add list එකෙන් අයින් කරනවා
+  const wasAdded = (ov[leType].add || []).some(p => p.code === code);
+  if (wasAdded) {
+    ov[leType].add = ov[leType].add.filter(p => p.code !== code);
+  } else {
+    // base item එකක් නම් remove list එකට දානවා
+    ov[leType].remove = ov[leType].remove || [];
+    if (!ov[leType].remove.includes(code)) ov[leType].remove.push(code);
+  }
+  // empty override එකක් නම් clean
+  if (!(ov[leType].add || []).length && !(ov[leType].remove || []).length) delete ov[leType];
+  saveOverrides(ov);
+  renderListEditor();
+  showToast(t('leItemRemoved'));
+}
 
 // ===== STATE =====
 let currentRep = '';
@@ -869,6 +1144,7 @@ function goTo(id) {
   document.getElementById(id).classList.add('active');
   window.scrollTo(0,0);
   if (id === 's-manage') renderStoreManage();
+  if (id === 's-listedit') openListEditor();
   if (id === 's-login') { populateStoreSelect(); updatePendingBadge(); renderExpiryReminders(); renderTodayPlan(); renderDraftBox(); }
   if (id === 's-history') { renderHistory(); renderPlan(); }
 }
@@ -918,10 +1194,10 @@ function startVisit() {
   saveDraft();
   goTo('s-checklist');
 
-  // මේ store එකේ expiry ළඟ items තියෙනවා නම් rep ට මතක් කරනවා
-  const d = loadExpiryData();
-  const storeExp = d[currentStore] || {};
-  const soonCount = Object.values(storeExp).reduce((n, dates) => n + dates.filter(isExpiringSoon).length, 0);
+  // මේ outlet එකේ (base — ඕනෑම location) expiry ළඟ batches තියෙනවා නම් rep ට මතක් කරනවා
+  const storeExp = loadExpiryData()[currentStoreBase] || {};
+  let soonCount = 0;
+  Object.values(storeExp).forEach(entries => entries.forEach(e => { if (isExpiringSoon(e.date)) soonCount++; }));
   if (soonCount) showToast(t('expSoonToast', soonCount));
 }
 
@@ -946,8 +1222,8 @@ function renderChecklist() {
   list.innerHTML = shown.map(p => {
     const st = itemStatus[p.code] || '';
     const rowCls = st === 'ok' ? 'ok' : st === 'low' ? 'low' : st === 'miss' ? 'miss' : '';
-    const expDates = getItemExpiry(p.code);
-    const hasDanger = expDates.some(d => isExpiringSoon(d));
+    const expEntries = getItemExpiry(p.code);
+    const hasDanger = expEntries.some(e => isExpiringSoon(e.date));
     const expOpen = openExpiry.has(p.code);
     const qty = itemQty[p.code] || 0;
     // ඇත / Low වුණාම qty stepper එක පේනවා
@@ -967,18 +1243,19 @@ function renderChecklist() {
         <button class="st-btn ${st === 'ok' ? 'on-ok' : ''}" onclick="setStatus('${p.code}','ok')">${t('lOk')}</button>
         <button class="st-btn ${st === 'low' ? 'on-low' : ''}" onclick="setStatus('${p.code}','low')">${t('lLow')}</button>
         <button class="st-btn ${st === 'miss' ? 'on-miss' : ''}" onclick="setStatus('${p.code}','miss')">${t('lMiss')}</button>
-        <button class="st-btn exp ${expDates.length ? (hasDanger ? 'on-miss' : 'on-exp') : ''}" onclick="toggleExpiry('${p.code}')" title="Expiry dates">⏰${expDates.length ? ' ' + expDates.length : ''}</button>
+        <button class="st-btn exp ${expEntries.length ? (hasDanger ? 'on-miss' : 'on-exp') : ''}" onclick="toggleExpiry('${p.code}')" title="Expiry dates">⏰${expEntries.length ? ' ' + expEntries.length : ''}</button>
       </div>
     </div>
     ${expOpen ? `
     <div class="exp-panel">
       <div style="font-size:11px;color:#888;margin-bottom:7px;">⏰ ${p.name} — ${t('expHint')}</div>
-      <div>${expDates.map((d, i) => `
-        <span class="exp-chip ${isExpiringSoon(d) ? 'danger' : ''}">${fmtDate(d)}${isExpired(d) ? t('expiredMark') : isExpiringSoon(d) ? ' ⚠' : ''}
+      <div>${expEntries.map((e, i) => `
+        <span class="exp-chip ${isExpiringSoon(e.date) ? 'danger' : ''}">${fmtDate(e.date)}${e.qty ? ` <span class="exp-q">${e.qty}${t('expQtyUnit')}</span>` : ''}${isExpired(e.date) ? t('expiredMark') : isExpiringSoon(e.date) ? ' ⚠' : ''}
           <button onclick="removeExpiryDate('${p.code}', ${i})">✕</button>
         </span>`).join('')}</div>
       <div class="exp-add">
         <input type="date" id="exp-input-${p.code}">
+        <input type="number" class="exp-qty" id="exp-qty-${p.code}" placeholder="${t('expQtyPh')}" inputmode="numeric" min="0">
         <button onclick="addExpiryDate('${p.code}')">${t('add')}</button>
       </div>
     </div>` : ''}`;
@@ -998,40 +1275,97 @@ function toggleExpiry(code) {
   renderChecklist();
 }
 
-// ===== EXPIRY DATES (local persistent, per store) =====
-// structure: { "Spar - Kalubovila": { "4793001319515": ["2026-09-01", ...] } }
-function loadExpiryData() { return JSON.parse(localStorage.getItem('kenko_expiry_v1') || '{}'); }
-function saveExpiryData(d) { localStorage.setItem('kenko_expiry_v1', JSON.stringify(d)); }
+// ===== EXPIRY DATES (local persistent, per BASE outlet) =====
+// structure v2: { "Spar": { "4793001319515": [{date:"2026-09-01", qty:15, loc:"Kalubovila"}, ...] } }
+// keyed by base outlet (location නොසලකා) — location එක entry එකේ tag විදිහට
+function loadExpiryData() {
+  const v2 = JSON.parse(localStorage.getItem('kenko_expiry_v2') || 'null');
+  const old = JSON.parse(localStorage.getItem('kenko_expiry_v1') || 'null');
+  // v2 එකක් තියෙනවා නම් සහ පරණ v1 එකක් නැත්නම් ඒකම return
+  if (v2 && !old) return v2;
+  // v1 -> v2 migration: {"Spar - Kalubovila": {code:[dates]}} -> {"Spar": {code:[{date,qty,loc}]}}
+  const d = v2 || {};
+  if (old) {
+    Object.entries(old).forEach(([storeName, items]) => {
+      const base = storeName.split(' - ')[0];
+      const loc = storeName.includes(' - ') ? storeName.split(' - ').slice(1).join(' - ') : '';
+      if (!d[base]) d[base] = {};
+      Object.entries(items).forEach(([code, dates]) => {
+        if (!d[base][code]) d[base][code] = [];
+        (Array.isArray(dates) ? dates : []).forEach(dt => {
+          const dateStr = typeof dt === 'string' ? dt : dt.date;
+          if (!d[base][code].some(e => e.date === dateStr && (e.loc || '') === loc)) {
+            d[base][code].push({ date: dateStr, qty: 0, loc });
+          }
+        });
+      });
+    });
+    localStorage.setItem('kenko_expiry_v2', JSON.stringify(d));
+    localStorage.removeItem('kenko_expiry_v1');  // migrate once
+  }
+  return d;
+}
+function saveExpiryData(d) { localStorage.setItem('kenko_expiry_v2', JSON.stringify(d)); }
 
+// current outlet එකේ (base) මේ item එකේ entries — date අනුව sort
 function getItemExpiry(code) {
   const d = loadExpiryData();
-  return (d[currentStore] && d[currentStore][code]) ? d[currentStore][code] : [];
+  const arr = (d[currentStoreBase] && d[currentStoreBase][code]) ? d[currentStoreBase][code] : [];
+  return arr.slice().sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function currentLoc() {
+  return currentStore.includes(' - ') ? currentStore.split(' - ').slice(1).join(' - ') : '';
 }
 
 function addExpiryDate(code) {
   const inp = document.getElementById('exp-input-' + code);
+  const qInp = document.getElementById('exp-qty-' + code);
   const val = inp ? inp.value : '';
   if (!val) { showToast(t('pickDate')); return; }
+  const qty = qInp && qInp.value ? Math.max(0, parseInt(qInp.value, 10) || 0) : 0;
+  const loc = currentLoc();
   const d = loadExpiryData();
-  if (!d[currentStore]) d[currentStore] = {};
-  if (!d[currentStore][code]) d[currentStore][code] = [];
-  if (!d[currentStore][code].includes(val)) {
-    d[currentStore][code].push(val);
-    d[currentStore][code].sort();
-    saveExpiryData(d);
-  }
+  if (!d[currentStoreBase]) d[currentStoreBase] = {};
+  if (!d[currentStoreBase][code]) d[currentStoreBase][code] = [];
+  // එකම date + loc එකක් තිබ්බොත් qty update කරනවා, නැත්නම් අලුතෙන්
+  const existing = d[currentStoreBase][code].find(e => e.date === val && (e.loc || '') === loc);
+  if (existing) existing.qty = qty;
+  else d[currentStoreBase][code].push({ date: val, qty, loc });
+  saveExpiryData(d);
+  if (qInp) qInp.value = '';
   renderChecklist();
 }
 
 function removeExpiryDate(code, idx) {
   const d = loadExpiryData();
-  if (d[currentStore] && d[currentStore][code]) {
-    d[currentStore][code].splice(idx, 1);
-    if (!d[currentStore][code].length) delete d[currentStore][code];
-    if (!Object.keys(d[currentStore]).length) delete d[currentStore];
+  const arr = (d[currentStoreBase] && d[currentStoreBase][code]) ? d[currentStoreBase][code] : null;
+  if (!arr) { renderChecklist(); return; }
+  // getItemExpiry sort කරන නිසා, idx එක sorted array එකේ — code+date match කරලා අයින් කරනවා
+  const sorted = getItemExpiry(code);
+  const target = sorted[idx];
+  if (target) {
+    const realIdx = arr.findIndex(e => e.date === target.date && (e.loc || '') === (target.loc || '') && e.qty === target.qty);
+    if (realIdx > -1) arr.splice(realIdx, 1);
+  }
+  if (!arr.length) delete d[currentStoreBase][code];
+  if (d[currentStoreBase] && !Object.keys(d[currentStoreBase]).length) delete d[currentStoreBase];
+  saveExpiryData(d);
+  renderChecklist();
+}
+
+// login reminder එකෙන් clear කරන්න (base outlet + code + date + loc)
+function clearReminder(base, code, date, loc) {
+  const d = loadExpiryData();
+  const arr = (d[base] && d[base][code]) ? d[base][code] : null;
+  if (arr) {
+    const i = arr.findIndex(e => e.date === date && (e.loc || '') === (loc || ''));
+    if (i > -1) arr.splice(i, 1);
+    if (!arr.length) delete d[base][code];
+    if (!Object.keys(d[base]).length) delete d[base];
     saveExpiryData(d);
   }
-  renderChecklist();
+  renderExpiryReminders();
 }
 
 function isExpired(dateStr) {
@@ -1057,27 +1391,33 @@ function findItemName(code) {
   return code;
 }
 
-// Login screen එකේ expiry reminders (දවස් 30 ඇතුළත)
+// Login screen එකේ expiry reminders (දවස් 30 ඇතුළත) — base outlet + location tag + qty
 function renderExpiryReminders() {
   const box = document.getElementById('expiry-reminder');
   if (!box) return;
   const d = loadExpiryData();
   const lines = [];
-  Object.entries(d).forEach(([store, items]) => {
-    Object.entries(items).forEach(([code, dates]) => {
-      dates.filter(isExpiringSoon).forEach(dt => {
-        lines.push({ store, code, dt });
+  Object.entries(d).forEach(([base, items]) => {
+    Object.entries(items).forEach(([code, entries]) => {
+      entries.forEach(e => {
+        if (isExpiringSoon(e.date)) lines.push({ base, code, date: e.date, qty: e.qty || 0, loc: e.loc || '' });
       });
     });
   });
   if (!lines.length) { box.style.display = 'none'; return; }
-  lines.sort((a, b) => a.dt.localeCompare(b.dt));
+  lines.sort((a, b) => a.date.localeCompare(b.date));
   box.style.display = 'block';
-  box.innerHTML = '<div style="font-weight:700;margin-bottom:6px;">' + t('remTitle') + '</div>' +
-    lines.slice(0, 12).map(l =>
-      `<div class="r-line">🏪 ${l.store} — <b>${findItemName(l.code)}</b> · ${fmtDate(l.dt)}${isExpired(l.dt) ? t('expiredMark') : ''}</div>`
-    ).join('') +
-    (lines.length > 12 ? `<div class="r-line" style="color:#888;">${t('more', lines.length - 12)}</div>` : '');
+  box.innerHTML = '<div style="font-weight:700;margin-bottom:8px;">' + t('remTitle') + '</div>' +
+    lines.slice(0, 15).map(l => {
+      const locTag = l.loc ? `<span class="r-loc">${l.loc}</span>` : '';
+      const qtyTag = l.qty ? `<span class="r-qty">${l.qty}${t('expQtyUnit')}</span>` : '';
+      const expd = isExpired(l.date) ? t('expiredMark') : '';
+      return `<div class="r-line">
+        <span class="r-txt">🏪 ${l.base}${locTag} — <b>${findItemName(l.code)}</b> · ${fmtDate(l.date)}${qtyTag}${expd}</span>
+        <button class="r-clear" title="${t('remClear')}" onclick="clearReminder('${l.base}','${l.code}','${l.date}','${(l.loc||'').replace(/'/g,"\\'")}')">✓</button>
+      </div>`;
+    }).join('') +
+    (lines.length > 15 ? `<div class="r-line" style="color:#888;">${t('more', lines.length - 15)}</div>` : '');
 }
 
 function setStatus(code, st) {
@@ -1260,8 +1600,8 @@ function buildReport() {
   const now = new Date();
   const ok = statusItems('ok'), low = statusItems('low'), miss = statusItems('miss'), un = uncheckedItems();
   const expEntries = visitItems
-    .map(p => ({ p, dates: getItemExpiry(p.code) }))
-    .filter(e => e.dates.length);
+    .map(p => ({ p, entries: getItemExpiry(p.code) }))
+    .filter(e => e.entries.length);
   const notes = document.getElementById('visit-notes').value.trim();
   const competitor = document.getElementById('visit-competitor').value.trim();
   const qtyStr = p => itemQty[p.code] ? ` ×${itemQty[p.code]}` : '';
@@ -1297,7 +1637,7 @@ function buildReport() {
   if (expEntries.length) {
     r += `⏰ EXPIRY DATES (${expEntries.length}):\n`;
     expEntries.forEach(e => {
-      const ds = e.dates.map(dt => fmtDate(dt) + (isExpired(dt) ? ' ⚠EXPIRED' : isExpiringSoon(dt) ? ' ⚠' : '')).join(', ');
+      const ds = e.entries.map(x => fmtDate(x.date) + (x.qty ? ` (${x.qty})` : '') + (isExpired(x.date) ? ' ⚠EXPIRED' : isExpiringSoon(x.date) ? ' ⚠' : '')).join(', ');
       r += `  • ${e.p.name} — ${ds}\n`;
     });
     r += '\n';
@@ -1316,8 +1656,8 @@ async function buildPayload() {
   const notes = document.getElementById('visit-notes').value.trim();
   const competitor = document.getElementById('visit-competitor').value.trim();
   const expEntries = visitItems
-    .map(p => ({ code: p.code, name: p.name, dates: getItemExpiry(p.code) }))
-    .filter(e => e.dates.length);
+    .map(p => ({ code: p.code, name: p.name, dates: getItemExpiry(p.code).map(x => x.date), entries: getItemExpiry(p.code) }))
+    .filter(e => e.entries.length);
   const withQty = p => itemQty[p.code] ? { ...p, qty: itemQty[p.code] } : { ...p };
 
   // shelf photos compress කරලා attach කරනවා (max 4)
