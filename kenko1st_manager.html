@@ -197,6 +197,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .exp-table td.cell-na { color: #ccc; }
 .exp-table tr.total-row td { background: #fafafa; font-weight: 600; }
 .exp-empty { font-size: 13px; color: #aaa; padding: 16px 0; }
+.exp-daytabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.exp-daytab { padding: 6px 12px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: #666; font-size: 12px; font-weight: 600; cursor: pointer; }
+.exp-daytab.active { background: #1a7431; color: #fff; border-color: #1a7431; }
+.exp-range-lbl { font-size: 13px; color: #666; font-weight: 600; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -238,12 +242,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <!-- Excel Export -->
   <div class="export-panel" id="export-panel" style="display:none;">
     <h3>📥 Daily Stock Sheet (Excel)</h3>
-    <div class="sub">දවසක් + outlet type එකක් තෝරලා, ඒ දවසේ visits වලින් stock matrix එකක් — Excel එකක් download කරන්න</div>
+    <div class="sub">දවස් range එකක් (From–To) + outlet type එකක් තෝරලා, ඒ දවස්වල visits වලින් stock matrix — Excel එකක් (දවසකට sheet එකක්) download කරන්න</div>
     <div class="exp-controls">
-      <input type="date" id="exp-date">
+      <span class="exp-range-lbl">From</span>
+      <input type="date" id="exp-date-from">
+      <span class="exp-range-lbl">To</span>
+      <input type="date" id="exp-date-to">
       <select id="exp-outlet" onchange="renderExportPreview()"></select>
       <button class="exp-dl-btn" id="exp-dl" onclick="downloadStockSheet()">⬇ Download Excel</button>
     </div>
+    <div class="exp-daytabs" id="exp-daytabs"></div>
     <div class="exp-preview" id="exp-preview"></div>
   </div>
 
@@ -754,15 +762,32 @@ function setupExport() {
   if (!allVisits.length) { panel.style.display = 'none'; return; }
   panel.style.display = 'block';
 
-  // date default = අද (හෝ අලුත්ම visit එකේ date එක)
-  const dInp = document.getElementById('exp-date');
-  if (!dInp.value) {
-    const latest = allVisits.reduce((a, v) => new Date(v.savedAt) > new Date(a) ? v.savedAt : a, allVisits[0].savedAt);
-    dInp.value = ymd(latest);
+  // default: from = 7 දවසකට කලින්, to = අලුත්ම visit එකේ date එක
+  const fromInp = document.getElementById('exp-date-from');
+  const toInp = document.getElementById('exp-date-to');
+  const latest = allVisits.reduce((a, v) => new Date(v.savedAt) > new Date(a) ? v.savedAt : a, allVisits[0].savedAt);
+  if (!toInp.value) toInp.value = ymd(latest);
+  if (!fromInp.value) {
+    const wk = new Date(latest); wk.setDate(wk.getDate() - 6);
+    fromInp.value = ymd(wk);
   }
-  dInp.onchange = () => { populateExportOutlets(); renderExportPreview(); };
+  fromInp.onchange = () => { if (fromInp.value > toInp.value) toInp.value = fromInp.value; populateExportOutlets(); renderExportPreview(); };
+  toInp.onchange = () => { if (toInp.value < fromInp.value) fromInp.value = toInp.value; populateExportOutlets(); renderExportPreview(); };
   populateExportOutlets();
   renderExportPreview();
+}
+
+// range එකේ, data තියෙන දවස් (ascending) — outlet එකට filter කරන්නත් පුළුවන්
+function datesInRange(base) {
+  const from = document.getElementById('exp-date-from').value;
+  const to = document.getElementById('exp-date-to').value;
+  if (!from || !to) return [];
+  const set = new Set();
+  allVisits.forEach(v => {
+    const d = ymd(v.savedAt);
+    if (d >= from && d <= to && (!base || baseOutlet(v.store) === base)) set.add(d);
+  });
+  return [...set].sort();
 }
 
 // තෝරපු දවසේ visits වල outlet types
@@ -771,8 +796,10 @@ function visitsOnDate(dateStr) {
 }
 function populateExportOutlets() {
   const sel = document.getElementById('exp-outlet');
-  const dateStr = document.getElementById('exp-date').value;
-  const bases = [...new Set(visitsOnDate(dateStr).map(v => baseOutlet(v.store)))].sort();
+  const from = document.getElementById('exp-date-from').value;
+  const to = document.getElementById('exp-date-to').value;
+  const inRange = allVisits.filter(v => { const d = ymd(v.savedAt); return d >= from && d <= to; });
+  const bases = [...new Set(inRange.map(v => baseOutlet(v.store)))].sort();
   const prev = sel.value;
   sel.innerHTML = bases.map(b => `<option value="${b}">${b}</option>`).join('');
   if (bases.includes(prev)) sel.value = prev;
@@ -823,15 +850,28 @@ function buildStockMatrix(dateStr, base) {
   return { locations, rows };
 }
 
+let expPreviewDay = '';  // preview එකේ දැනට පේන දවස
+
 function renderExportPreview() {
-  const dateStr = document.getElementById('exp-date').value;
   const base = document.getElementById('exp-outlet').value;
   const box = document.getElementById('exp-preview');
+  const tabsEl = document.getElementById('exp-daytabs');
   const dl = document.getElementById('exp-dl');
-  if (!base) { box.innerHTML = '<div class="exp-empty">ඒ දවසට visits නැහැ</div>'; dl.disabled = true; return; }
-  const m = buildStockMatrix(dateStr, base);
-  if (!m || !m.rows.length) { box.innerHTML = '<div class="exp-empty">ඒ දවසට visits නැහැ</div>'; dl.disabled = true; return; }
+
+  if (!base) { tabsEl.innerHTML = ''; box.innerHTML = '<div class="exp-empty">ඒ range එකට visits නැහැ</div>'; dl.disabled = true; return; }
+
+  const days = datesInRange(base);
+  if (!days.length) { tabsEl.innerHTML = ''; box.innerHTML = '<div class="exp-empty">ඒ range එකට visits නැහැ</div>'; dl.disabled = true; return; }
   dl.disabled = false;
+
+  // day tabs
+  if (!days.includes(expPreviewDay)) expPreviewDay = days[days.length - 1]; // default අලුත්ම දවස
+  tabsEl.innerHTML = days.map(d =>
+    `<button class="exp-daytab ${d === expPreviewDay ? 'active' : ''}" onclick="expPreviewDay='${d}'; renderExportPreview();">${fmtDayTab(d)}</button>`
+  ).join('') + (days.length > 1 ? `<span style="font-size:12px;color:#aaa;align-self:center;margin-left:6px;">${days.length} days → Excel එකේ sheet ${days.length}ක්</span>` : '');
+
+  const m = buildStockMatrix(expPreviewDay, base);
+  if (!m || !m.rows.length) { box.innerHTML = '<div class="exp-empty">ඒ දවසට visits නැහැ</div>'; return; }
 
   const sym = { ok: '✓', out: '0', low: 'LOW', '': '–' };
   const cls = { ok: 'cell-ok', out: 'cell-out', low: 'cell-low', '': 'cell-na' };
@@ -847,29 +887,47 @@ function renderExportPreview() {
   box.innerHTML = html;
 }
 
-function downloadStockSheet() {
-  const dateStr = document.getElementById('exp-date').value;
-  const base = document.getElementById('exp-outlet').value;
-  const m = buildStockMatrix(dateStr, base);
-  if (!m || !m.rows.length) return;
+function fmtDayTab(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+}
 
+function sheetFromMatrix(m) {
   const sym = { ok: '✓', out: '0', low: 'LOW', '': '' };
   const header = ['#', 'Code', 'Product Description', ...m.locations, 'OUT', 'LOW'];
   const aoa = [header];
   m.rows.forEach((r, i) => {
-    const row = [i+1, r.code, r.name, ...m.locations.map(l => sym[r.cells[l]]), r.out || 0, r.low || 0];
-    aoa.push(row);
+    aoa.push([i+1, r.code, r.name, ...m.locations.map(l => sym[r.cells[l]]), r.out || 0, r.low || 0]);
   });
-
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  // column widths
   ws['!cols'] = [{ wch: 4 }, { wch: 10 }, { wch: 34 }, ...m.locations.map(() => ({ wch: 12 })), { wch: 6 }, { wch: 6 }];
   ws['!freeze'] = { xSplit: 3, ySplit: 1 };
+  return ws;
+}
+
+function downloadStockSheet() {
+  const base = document.getElementById('exp-outlet').value;
+  const days = datesInRange(base);
+  if (!days.length) return;
 
   const wb = XLSX.utils.book_new();
-  const sheetName = dateStr.slice(5).replace('-', ' '); // "07 22"
-  XLSX.utils.book_append_sheet(wb, ws, sheetName);
-  const fname = `${base.replace(/\s+/g,'_')}_Stock_${dateStr.replace(/-/g,'_').slice(5)}.xlsx`;
+  let added = 0;
+  days.forEach(dateStr => {
+    const m = buildStockMatrix(dateStr, base);
+    if (!m || !m.rows.length) return;
+    // sheet name = "07 22" (Excel max 31 chars, unique)
+    let name = dateStr.slice(5).replace('-', ' ');
+    if (wb.SheetNames.includes(name)) name = dateStr.replace(/-/g, ' ');
+    XLSX.utils.book_append_sheet(wb, sheetFromMatrix(m), name);
+    added++;
+  });
+  if (!added) return;
+
+  const from = days[0].replace(/-/g,'_').slice(5);
+  const to = days[days.length-1].replace(/-/g,'_').slice(5);
+  const fname = days.length === 1
+    ? `${base.replace(/\s+/g,'_')}_Stock_${from}.xlsx`
+    : `${base.replace(/\s+/g,'_')}_Stock_${from}_to_${to}.xlsx`;
   XLSX.writeFile(wb, fname);
 }
 
