@@ -31,6 +31,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 /* Visit cards */
 .visits-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+
+/* Main tabs */
+.main-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+.main-tab { padding: 10px 20px; border-radius: 10px; border: 1px solid #ddd; background: #fff; color: #888; font-weight: 700; font-size: 14px; cursor: pointer; }
+.main-tab.active { background: #1a1a1a; color: #c8f04c; border-color: #1a1a1a; }
+.main-tab .tab-badge { background: #e53935; color: #fff; border-radius: 10px; font-size: 11px; padding: 1px 7px; margin-left: 6px; }
+.main-tab.active .tab-badge { background: #c8f04c; color: #1a1a1a; }
+
+/* Order card */
+.order-card { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-left: 4px solid #ff9800; }
+.order-card .oc-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.order-card .oc-store { font-size: 16px; font-weight: 700; }
+.order-card .oc-meta { font-size: 12px; color: #888; margin-top: 3px; }
+.order-card .oc-badge { background: #fff3e0; color: #e65100; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 12px; white-space: nowrap; }
+.order-card .oc-item { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+.order-card .oc-item .oc-qty { font-weight: 700; color: #e65100; }
+.order-card .oc-actions { margin-top: 14px; display: flex; gap: 8px; }
+.order-card .oc-wa { flex: 1; background: #25d366; color: #fff; border: none; padding: 9px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; }
+.orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
 .visit-card { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-left: 4px solid #eee; }
 .visit-card.has-missing { border-left-color: #e53935; }
 .visit-card.all-ok { border-left-color: #43a047; }
@@ -195,6 +214,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="err" id="err"></div>
   <div class="last-updated" id="last-updated"></div>
 
+  <!-- Main tabs -->
+  <div class="main-tabs" id="main-tabs" style="display:none;">
+    <button class="main-tab active" id="mt-visits" onclick="showMainTab('visits')">📋 Visits</button>
+    <button class="main-tab" id="mt-orders" onclick="showMainTab('orders')">🛒 Orders <span class="tab-badge" id="orders-badge" style="display:none;">0</span></button>
+  </div>
+
   <!-- Summary -->
   <div class="summary-row" id="summary-row">
     <div class="sum-card"><div class="num" id="s-visits">-</div><div class="lbl">Total Visits Today</div></div>
@@ -252,6 +277,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
   <!-- Visits -->
   <div class="visits-grid" id="visits-grid"></div>
+
+  <!-- Orders -->
+  <div id="orders-view" style="display:none;">
+    <div class="orders-grid" id="orders-grid"></div>
+  </div>
 </div>
 
 <!-- Modal -->
@@ -301,6 +331,8 @@ function showPhoto(src) {
   document.getElementById('photo-full').classList.add('open');
 }
 let allVisits = [];
+let allOrders = [];
+let mainTab = 'visits';
 
 function closeModal(e) {
   if (e.target === document.getElementById('modal-overlay')) {
@@ -435,15 +467,20 @@ async function loadVisits() {
   try {
     const resp = await fetch(`${WORKER_URL}/get-visits`);
     if (!resp.ok) throw new Error('Server error ' + resp.status);
-    allVisits = await resp.json();
-    if (!Array.isArray(allVisits)) throw new Error('Invalid response');
+    const raw = await resp.json();
+    if (!Array.isArray(raw)) throw new Error('Invalid response');
+    // orders vs visits වෙන් කරනවා
+    allOrders = raw.filter(v => v.type === 'order');
+    allVisits = raw.filter(v => v.type !== 'order');
 
+    document.getElementById('main-tabs').style.display = allOrders.length ? 'flex' : 'none';
     populateStoreFilter();
     renderSummary();
     renderStoreTable();
     renderAnalysisOutlets();
     setupExport();
     renderVisits();
+    renderOrders();
     document.getElementById('last-updated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
     document.getElementById('date-lbl').textContent = new Date().toLocaleDateString('en-GB', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   } catch(e) {
@@ -612,14 +649,93 @@ async function clearVisit(v) {
     if (!data.success) throw new Error(data.error || 'delete failed');
     // local list එකෙනුත් අයින් කරලා re-render
     allVisits = allVisits.filter(x => x.savedAt !== v.savedAt);
+    allOrders = allOrders.filter(x => x.savedAt !== v.savedAt);
     document.getElementById('modal-overlay').classList.remove('open');
+    document.getElementById('main-tabs').style.display = allOrders.length ? 'flex' : 'none';
     populateStoreFilter();
     renderSummary();
     renderStoreTable();
     renderAnalysisOutlets();
     renderVisits();
+    renderOrders();
+    if (mainTab === 'orders' && !allOrders.length) showMainTab('visits');
   } catch(e) {
     alert('⚠ Clear error: ' + e.message);
+  }
+}
+
+// ===== MAIN TABS (Visits / Orders) =====
+function showMainTab(tab) {
+  mainTab = tab;
+  document.getElementById('mt-visits').classList.toggle('active', tab === 'visits');
+  document.getElementById('mt-orders').classList.toggle('active', tab === 'orders');
+  // visits-only sections
+  const visitsMode = tab === 'visits';
+  ['summary-row','store-table','export-panel','analysis'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (id === 'summary-row') { el.style.display = visitsMode ? 'grid' : 'none'; return; }
+    // store-table/export/analysis: keep their own display logic but hide in orders mode
+    if (visitsMode) { el.dataset.hidden = ''; el.style.display = el.dataset.origDisplay || 'block'; }
+    else { el.dataset.origDisplay = el.style.display; el.style.display = 'none'; }
+  });
+  document.querySelector('.filters').style.display = visitsMode ? 'flex' : 'none';
+  document.getElementById('visits-grid').style.display = visitsMode ? 'grid' : 'none';
+  document.getElementById('orders-view').style.display = visitsMode ? 'none' : 'block';
+}
+
+function renderOrders() {
+  const badge = document.getElementById('orders-badge');
+  // අද orders
+  const today = new Date().toDateString();
+  const todayOrders = allOrders.filter(o => new Date(o.savedAt).toDateString() === today);
+  if (allOrders.length) { badge.style.display = 'inline'; badge.textContent = todayOrders.length || allOrders.length; }
+  else badge.style.display = 'none';
+
+  const grid = document.getElementById('orders-grid');
+  if (!allOrders.length) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="icon">🛒</div><div>No orders yet</div></div>';
+    return;
+  }
+  const sorted = allOrders.slice().sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+  window._orders = sorted;
+  grid.innerHTML = sorted.map((o, idx) => {
+    const items = o.orderItems || [];
+    const time = new Date(o.savedAt).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+    const rows = items.map(p => `<div class="oc-item"><span>${p.name}</span><span class="oc-qty">${p.qty}</span></div>`).join('');
+    return `<div class="order-card">
+      <div class="oc-head">
+        <div>
+          <div class="oc-store">🛒 ${o.store}</div>
+          <div class="oc-meta">👤 ${o.rep} &nbsp;·&nbsp; 🕐 ${time}</div>
+        </div>
+        <span class="oc-badge">${items.length} items</span>
+      </div>
+      ${rows}
+      <div class="oc-actions">
+        <button class="oc-wa" onclick="shareOrder(window._orders[${idx}])">📲 WhatsApp</button>
+        <button class="clear-btn" onclick="clearVisit(window._orders[${idx}])">🗑 Clear</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function buildOrderText(o) {
+  const items = o.orderItems || [];
+  const time = new Date(o.savedAt).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+  let t = `🛒 KENKO1ST ORDER\n━━━━━━━━━━━━━━━━━━━━\n`;
+  t += `Store: ${o.store}\nRep: ${o.rep}\nDate: ${time}\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+  items.forEach((p, i) => { t += `${i+1}. ${p.name} — ${p.qty}\n`; });
+  t += `\n━━━━━━━━━━━━━━━━━━━━\nTotal items: ${items.length}`;
+  return t;
+}
+
+function shareOrder(o) {
+  const text = buildOrderText(o);
+  if (navigator.share) { navigator.share({ title: 'Kenko1st Order', text }).catch(()=>{}); }
+  else {
+    const wa = 'https://wa.me/?text=' + encodeURIComponent(text);
+    window.open(wa, '_blank');
   }
 }
 
