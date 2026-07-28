@@ -126,6 +126,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .le-sr .sr-name { flex: 1; font-size: 13px; min-width: 0; }
 .le-sr .sr-add { color: #c8f04c; font-size: 18px; flex-shrink: 0; }
 .le-sr.exists { opacity: 0.4; }
+
+/* Order screen */
+.ord-item { display: flex; align-items: center; gap: 10px; background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 10px; padding: 10px 12px; margin-bottom: 7px; }
+.ord-item .oi-name { flex: 1; font-size: 13px; min-width: 0; }
+.ord-item .oi-code { font-size: 10px; color: #555; margin-top: 2px; }
+.ord-qty { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.ord-qty .oq-btn { width: 28px; height: 28px; border-radius: 7px; border: 1px solid #333; background: #161616; color: #c8f04c; font-size: 16px; cursor: pointer; font-family: inherit; line-height: 1; }
+.ord-qty .oq-val { font-size: 14px; font-weight: 700; color: #f0f0f0; min-width: 26px; text-align: center; }
+.ord-rm { background: rgba(255,82,82,0.12); color: #ff5252; border: none; padding: 6px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
+.ord-empty { text-align: center; color: #555; padding: 24px 0; font-size: 13px; }
+.ord-count { font-size: 13px; color: #c8f04c; font-weight: 700; margin: 14px 0 8px; }
 .le-section-title { font-size: 12px; color: #888; font-weight: 700; margin: 18px 0 8px; }
 
 /* Language switcher */
@@ -282,6 +293,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <button class="btn-full btn-dark" id="btn-managestores" onclick="goTo('s-manage')" style="font-size:13px;padding:11px;">+ Add / Remove Stores</button>
       <button class="btn-full btn-dark" id="btn-history" onclick="goTo('s-history')" style="font-size:13px;padding:11px;">📖 My Visit History</button>
       <button class="btn-full btn-dark" id="btn-listedit" onclick="goTo('s-listedit')" style="font-size:13px;padding:11px;">📝 Edit Item Lists</button>
+      <button class="btn-full btn-dark" id="btn-order" onclick="goTo('s-order')" style="font-size:13px;padding:11px;">🛒 Quick Order</button>
     </div>
   </div>
 </div>
@@ -437,6 +449,37 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div id="le-list"></div>
 </div>
 
+<!-- SCREEN: QUICK ORDER -->
+<div class="screen" id="s-order">
+  <div class="top-bar">
+    <h1 id="ord-title">Quick Order</h1>
+    <button class="back-btn" onclick="goTo('s-login')">← Back</button>
+  </div>
+
+  <div class="login-label" id="ord-outlet-label">Outlet</div>
+  <select id="ord-outlet" class="login-select" onchange="ordRefreshLoc()" style="margin-bottom:8px;"></select>
+
+  <div class="login-label" id="ord-loc-label">Location</div>
+  <input type="text" id="ord-location" class="login-select" placeholder="" autocomplete="off" list="ord-loc-suggestions" style="margin-bottom:16px;">
+  <datalist id="ord-loc-suggestions"></datalist>
+
+  <div class="le-section-title" id="ord-add-title">➕ Add item to order</div>
+  <input type="text" id="ord-search" class="login-select" placeholder="🔍 Search..." autocomplete="off" oninput="renderOrdSearch()" style="margin-bottom:6px;">
+  <div class="le-search-result" id="ord-search-result"></div>
+
+  <div id="ord-manual-wrap" style="display:none;background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:12px;margin-top:10px;">
+    <div style="font-size:12px;color:#888;margin-bottom:8px;" id="ord-manual-title">✍ List එකේ නැද්ද? අතින් type කරන්න</div>
+    <input type="text" id="ord-manual-name" class="login-select" placeholder="Item name" autocomplete="off" style="margin-bottom:8px;">
+    <button onclick="ordAddManual()" style="width:100%;background:#c8f04c;color:#0f0f0f;border:none;border-radius:10px;padding:11px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px;" id="ord-manual-btn">Add to order</button>
+  </div>
+
+  <div class="ord-count" id="ord-count"></div>
+  <div id="ord-list"></div>
+
+  <button class="btn-full btn-green" id="ord-submit" onclick="submitOrder()" style="margin-top:16px;">📤 Submit & WhatsApp Share</button>
+  <button class="btn-full btn-dark" id="ord-copy" onclick="copyOrder()" style="font-size:13px;">📋 Copy Order</button>
+</div>
+
 <script>
 // ===== LANGUAGE / i18n =====
 let LANG = localStorage.getItem('kenko_lang') || 'si';
@@ -479,7 +522,10 @@ si: {
   leManualTitle:'✍ Master list එකේ නැද්ද? අතින් type කරන්න', leManualPh:'අලුත් නමක් type කරන්න',
   leCount:'මුළු items {}ක්', leAdded:'rep add', leItemAdded:'✓ Item add කළා', leItemRemoved:'Item අයින් කළා',
   leNeedName:'Item නමක් type කරන්න', leDup:'⚠ ඒ item එක දැනටමත් list එකේ තියෙනවා',
-  expQtyPh:'කීයක්?', expQtyUnit:'ක්', remClear:'බලලා ඉවරයි — clear කරන්න'
+  expQtyPh:'කීයක්?', expQtyUnit:'ක්', remClear:'බලලා ඉවරයි — clear කරන්න',
+  btnOrder:'🛒 Quick Order', ordTitle:'Quick Order', ordAddTitle:'➕ Order එකට item එකක්',
+  ordCount:'Order එකේ items {}ක්', ordEmpty:'තාම items නැහැ — උඩින් search කරලා add කරන්න',
+  ordSubmitted:'✅ Order එක manager ට යැව්වා!', ordManualTitle:'✍ List එකේ නැද්ද? අතින් type කරන්න'
 },
 ta: {
   lblRep:'பிரதிநிதி பெயர்', selectRep:'-- Rep தேர்வு செய்க --', lblStore:'கடை (Store)', selectStore:'-- Store தேர்வு செய்க --',
@@ -518,7 +564,10 @@ ta: {
   leManualTitle:'✍ Master list-இல் இல்லையா? கையால் type செய்யவும்', leManualPh:'புதிய பெயரை type செய்யவும்',
   leCount:'மொத்தம் {} items', leAdded:'rep add', leItemAdded:'✓ Item சேர்க்கப்பட்டது', leItemRemoved:'Item நீக்கப்பட்டது',
   leNeedName:'Item பெயரை type செய்யவும்', leDup:'⚠ அந்த item ஏற்கனவே list-இல் உள்ளது',
-  expQtyPh:'எத்தனை?', expQtyUnit:'', remClear:'பார்த்து முடிந்தது — clear செய்யவும்'
+  expQtyPh:'எத்தனை?', expQtyUnit:'', remClear:'பார்த்து முடிந்தது — clear செய்யவும்',
+  btnOrder:'🛒 விரைவு Order', ordTitle:'விரைவு Order', ordAddTitle:'➕ Order-க்கு item சேர்க்க',
+  ordCount:'Order-இல் {} items', ordEmpty:'இன்னும் items இல்லை — மேலே search செய்து add செய்யவும்',
+  ordSubmitted:'✅ Order manager-க்கு அனுப்பப்பட்டது!', ordManualTitle:'✍ List-இல் இல்லையா? கையால் type செய்யவும்'
 },
 en: {
   lblRep:'Rep Name', selectRep:'-- Select Rep --', lblStore:'Store', selectStore:'-- Select Store --',
@@ -557,7 +606,10 @@ en: {
   leManualTitle:'✍ Not in the master list? Type it manually', leManualPh:'type a new name',
   leCount:'{} items total', leAdded:'rep add', leItemAdded:'✓ Item added', leItemRemoved:'Item removed',
   leNeedName:'Type an item name', leDup:'⚠ That item is already in the list',
-  expQtyPh:'Qty?', expQtyUnit:'', remClear:'Checked — clear it'
+  expQtyPh:'Qty?', expQtyUnit:'', remClear:'Checked — clear it',
+  btnOrder:'🛒 Quick Order', ordTitle:'Quick Order', ordAddTitle:'➕ Add item to order',
+  ordCount:'{} items in order', ordEmpty:'No items yet — search above and add',
+  ordSubmitted:'✅ Order sent to manager!', ordManualTitle:'✍ Not in the list? Type it manually'
 }
 };
 
@@ -605,6 +657,10 @@ function applyLang() {
   T('fin-title','finTitle'); T('lbl-preview','lblPreview'); T('btn-share','btnShare'); T('btn-copy','btnCopy'); T('btn-new','btnNew');
   T('lbl-typehint','typeHint'); P('new-store-input','newStorePh');
   T('tab-visits','tabHistory'); T('tab-plan','tabPlan'); T('lbl-planform','lblPlanForm'); P('plan-loc','planLocPh');
+  T('btn-order','btnOrder'); T('ord-title','ordTitle'); T('ord-add-title','ordAddTitle');
+  T('ord-manual-title','ordManualTitle'); P('ord-search','leSearchPh'); P('ord-manual-name','leManualPh');
+  const ordOL = document.getElementById('ord-outlet-label'); if (ordOL) ordOL.textContent = t('leOutlet');
+  const ordLL = document.getElementById('ord-loc-label'); if (ordLL) ordLL.textContent = 'Location';
   T('btn-listedit','btnListEdit'); T('le-title','leTitle'); T('le-outlet-label','leOutlet');
   T('le-add-title','leAddTitle'); T('le-current-title','leCurrentTitle'); P('le-search','leSearchPh');
   T('le-manual-title','leManualTitle'); P('le-manual-name','leManualPh'); T('le-manual-btn','add');
@@ -1010,6 +1066,160 @@ function masterItemList() {
 
 
 
+// ===== QUICK ORDER =====
+let orderItems = [];   // [{code, name, qty}]
+
+function openOrder() {
+  const sel = document.getElementById('ord-outlet');
+  sel.innerHTML = '<option value="">' + t('selectStore') + '</option>' +
+    stores.map(s => `<option value="${s}">${s}</option>`).join('');
+  document.getElementById('ord-search').value = '';
+  document.getElementById('ord-manual-name').value = '';
+  document.getElementById('ord-search-result').innerHTML = '';
+  document.getElementById('ord-manual-wrap').style.display = 'none';
+  ordRefreshLoc();
+  renderOrder();
+}
+
+function ordRefreshLoc() {
+  const store = document.getElementById('ord-outlet').value;
+  const dl = document.getElementById('ord-loc-suggestions');
+  const type = getStoreType(store);
+  const merged = [...new Set([...(SUGGESTED_LOCATIONS[type] || []), ...learnedLocations(store)])].sort();
+  dl.innerHTML = merged.map(l => `<option value="${l.replace(/"/g,'&quot;')}">`).join('');
+}
+
+function renderOrdSearch() {
+  const term = document.getElementById('ord-search').value.trim().toLowerCase();
+  const box = document.getElementById('ord-search-result');
+  const manual = document.getElementById('ord-manual-wrap');
+  if (!term) { box.innerHTML = ''; manual.style.display = 'none'; return; }
+  const inOrder = new Set(orderItems.map(p => p.code));
+  const matches = masterItemList().filter(p => p.name.toLowerCase().includes(term)).slice(0, 30);
+  box.innerHTML = matches.map(p => {
+    const has = inOrder.has(p.code);
+    return `<div class="le-sr ${has ? 'exists' : ''}" ${has ? '' : `onclick="ordAdd('${p.code}')"`}>
+      <div class="sr-name">${p.name}<div class="le-code">${p.code}</div></div>
+      <div class="sr-add">${has ? '✓' : '＋'}</div>
+    </div>`;
+  }).join('');
+  manual.style.display = 'block';
+  document.getElementById('ord-manual-name').placeholder = '"' + document.getElementById('ord-search').value.trim() + '"';
+}
+
+function ordAdd(code) {
+  const m = masterItemList().find(p => p.code === code);
+  if (!m) return;
+  if (!orderItems.some(p => p.code === code)) orderItems.push({ code: m.code, name: m.name, qty: 1 });
+  document.getElementById('ord-search').value = '';
+  document.getElementById('ord-search-result').innerHTML = '';
+  document.getElementById('ord-manual-wrap').style.display = 'none';
+  renderOrder();
+}
+
+function ordAddManual() {
+  const name = document.getElementById('ord-manual-name').value.trim();
+  if (!name) { showToast(t('leNeedName')); return; }
+  const code = 'C' + Date.now();
+  orderItems.push({ code, name, qty: 1 });
+  document.getElementById('ord-manual-name').value = '';
+  document.getElementById('ord-search').value = '';
+  document.getElementById('ord-search-result').innerHTML = '';
+  document.getElementById('ord-manual-wrap').style.display = 'none';
+  renderOrder();
+}
+
+function ordQty(code, d) {
+  const it = orderItems.find(p => p.code === code);
+  if (!it) return;
+  it.qty = Math.max(1, it.qty + d);
+  renderOrder();
+}
+
+function ordRemove(code) {
+  orderItems = orderItems.filter(p => p.code !== code);
+  renderOrder();
+}
+
+function renderOrder() {
+  const list = document.getElementById('ord-list');
+  document.getElementById('ord-count').textContent = orderItems.length ? t('ordCount', orderItems.length) : '';
+  if (!orderItems.length) {
+    list.innerHTML = `<div class="ord-empty">${t('ordEmpty')}</div>`;
+    document.getElementById('ord-submit').style.display = 'none';
+    document.getElementById('ord-copy').style.display = 'none';
+    return;
+  }
+  document.getElementById('ord-submit').style.display = 'block';
+  document.getElementById('ord-copy').style.display = 'block';
+  list.innerHTML = orderItems.map(p => `
+    <div class="ord-item">
+      <div class="oi-name">${p.name}<div class="oi-code">${p.code}</div></div>
+      <div class="ord-qty">
+        <button class="oq-btn" onclick="ordQty('${p.code}',-1)">−</button>
+        <span class="oq-val">${p.qty}</span>
+        <button class="oq-btn" onclick="ordQty('${p.code}',1)">+</button>
+      </div>
+      <button class="ord-rm" onclick="ordRemove('${p.code}')">✕</button>
+    </div>`).join('');
+}
+
+function ordStoreName() {
+  const store = document.getElementById('ord-outlet').value;
+  const loc = document.getElementById('ord-location').value.trim();
+  return loc ? store + ' - ' + loc : store;
+}
+
+function buildOrderReport() {
+  const now = new Date();
+  let r = `🛒 KENKO1ST ORDER\n`;
+  r += `━━━━━━━━━━━━━━━━━━━━\n`;
+  r += `Store: ${ordStoreName()}\n`;
+  r += `Rep: ${document.getElementById('rep-select').value || '-'}\n`;
+  r += `Date: ${fmtTime(now)}\n`;
+  r += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+  orderItems.forEach((p, i) => { r += `${i+1}. ${p.name} — ${p.qty}\n`; });
+  r += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+  r += `Total items: ${orderItems.length}`;
+  return r;
+}
+
+async function submitOrder() {
+  const store = document.getElementById('ord-outlet').value;
+  if (!store) { showToast(t('selectStore')); return; }
+  if (!orderItems.length) return;
+  const payload = {
+    type: 'order',
+    rep: document.getElementById('rep-select').value || '-',
+    store: ordStoreName(),
+    visitStart: new Date().toISOString(),
+    orderItems: orderItems.map(p => ({ code: p.code, name: p.name, qty: p.qty })),
+    visitData: { all: { ok: [], low: [], missing: [], expiry: [], competitor: '', notes: '' } }
+  };
+  // WhatsApp share
+  const text = buildOrderReport();
+  if (navigator.share) { try { await navigator.share({ title: 'Kenko1st Order', text }); } catch(e) {} }
+  else { copyOrder(); showToast(t('copiedWA')); }
+  // submit (offline safe)
+  try {
+    await sendPayload(payload);
+    showToast(t('ordSubmitted'));
+  } catch(e) {
+    queuePending(payload);
+    showToast(t('offlineSaved'));
+  }
+  orderItems = [];
+  document.getElementById('ord-location').value = '';
+  renderOrder();
+  goTo('s-login');
+}
+
+function copyOrder() {
+  const text = buildOrderReport();
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => showToast(t('copied')));
+  else { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast(t('copied')); }
+}
+
 // ===== LIST EDITOR =====
 let leType = '';  // currently editing outlet type
 
@@ -1162,6 +1372,7 @@ function goTo(id) {
   window.scrollTo(0,0);
   if (id === 's-manage') renderStoreManage();
   if (id === 's-listedit') openListEditor();
+  if (id === 's-order') openOrder();
   if (id === 's-login') { populateStoreSelect(); refreshLocationSuggestions(); updatePendingBadge(); renderExpiryReminders(); renderTodayPlan(); renderDraftBox(); }
   if (id === 's-history') { renderHistory(); renderPlan(); }
 }
