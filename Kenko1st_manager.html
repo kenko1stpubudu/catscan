@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kenko1st Manager Dashboard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; }
+
+.topbar { background: #1a1a1a; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+.topbar h1 { color: #c8f04c; font-size: 20px; font-weight: 700; }
+.topbar span { color: #888; font-size: 13px; }
+.refresh-btn { background: #c8f04c; color: #1a1a1a; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; }
+
+.container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+/* Summary cards */
+.summary-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.sum-card { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.sum-card .num { font-size: 32px; font-weight: 700; color: #1a1a1a; }
+.sum-card .lbl { font-size: 12px; color: #888; margin-top: 4px; }
+.sum-card.warn .num { color: #e53935; }
+.sum-card.ok .num { color: #43a047; }
+
+/* Filters */
+.filters { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+.filter-sel { padding: 9px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: #fff; cursor: pointer; outline: none; }
+.filter-sel:focus { border-color: #c8f04c; }
+.date-lbl { font-size: 13px; color: #888; }
+
+/* Visit cards */
+.visits-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+
+/* Main tabs */
+.main-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+.main-tab { padding: 10px 20px; border-radius: 10px; border: 1px solid #ddd; background: #fff; color: #888; font-weight: 700; font-size: 14px; cursor: pointer; }
+.main-tab.active { background: #1a1a1a; color: #c8f04c; border-color: #1a1a1a; }
+.main-tab .tab-badge { background: #e53935; color: #fff; border-radius: 10px; font-size: 11px; padding: 1px 7px; margin-left: 6px; }
+.main-tab.active .tab-badge { background: #c8f04c; color: #1a1a1a; }
+
+/* Order card */
+.order-card { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-left: 4px solid #ff9800; }
+.order-card .oc-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.order-card .oc-store { font-size: 16px; font-weight: 700; }
+.order-card .oc-meta { font-size: 12px; color: #888; margin-top: 3px; }
+.order-card .oc-badge { background: #fff3e0; color: #e65100; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 12px; white-space: nowrap; }
+.order-card .oc-item { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+.order-card .oc-item .oc-qty { font-weight: 700; color: #e65100; }
+.order-card .oc-actions { margin-top: 14px; display: flex; gap: 8px; }
+.order-card .oc-wa { flex: 1; background: #25d366; color: #fff; border: none; padding: 9px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; }
+.orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+.visit-card { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-left: 4px solid #eee; }
+.visit-card.has-missing { border-left-color: #e53935; }
+.visit-card.all-ok { border-left-color: #43a047; }
+
+.vc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.vc-store { font-size: 16px; font-weight: 700; }
+.vc-meta { font-size: 12px; color: #888; margin-top: 2px; }
+.vc-badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
+.badge-miss { background: #ffebee; color: #e53935; }
+.badge-ok { background: #e8f5e9; color: #43a047; }
+
+.vc-sections { margin-top: 10px; }
+.vc-sec { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: #f9f9f9; border-radius: 8px; margin-bottom: 6px; }
+.vc-sec-name { font-size: 13px; font-weight: 500; }
+.vc-sec-status { font-size: 12px; }
+.sec-ok { color: #43a047; }
+.sec-miss { color: #e53935; font-weight: 600; }
+
+.missing-list { margin-top: 8px; padding: 10px; background: #fff5f5; border-radius: 8px; }
+.missing-list .ml-title { font-size: 11px; color: #e53935; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.missing-list .ml-item { font-size: 12px; color: #555; padding: 2px 0; display: flex; gap: 6px; }
+.missing-list .ml-item::before { content: "•"; color: #e53935; }
+
+.vc-notes { margin-top: 8px; font-size: 12px; color: #888; font-style: italic; padding: 6px 10px; background: #f9f9f9; border-radius: 6px; }
+
+/* Loading */
+.loading { text-align: center; padding: 60px; color: #888; }
+.spinner { width: 40px; height: 40px; border: 3px solid #eee; border-top-color: #c8f04c; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty { text-align: center; padding: 60px; color: #aaa; font-size: 15px; }
+.empty .icon { font-size: 48px; margin-bottom: 12px; }
+
+/* Error */
+.err { background: #ffebee; border: 1px solid #ffcdd2; color: #c62828; padding: 14px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; display: none; }
+
+/* Timestamp */
+.last-updated { font-size: 12px; color: #aaa; text-align: right; margin-bottom: 16px; }
+
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+.modal-overlay.open { display: flex; }
+.modal { background: #fff; border-radius: 16px; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+.modal-header { padding: 20px 24px 16px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: flex-start; position: sticky; top: 0; background: #fff; z-index: 1; }
+.modal-header h2 { font-size: 18px; font-weight: 700; }
+.modal-header .meta { font-size: 12px; color: #888; margin-top: 3px; }
+.modal-close { background: #f5f5f5; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.modal-body { padding: 20px 24px 24px; }
+
+/* Availability table */
+.avail-section { margin-bottom: 20px; }
+.avail-section h3 { font-size: 13px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #f0f0f0; }
+.avail-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 8px; margin-bottom: 4px; }
+.avail-row:nth-child(even) { background: #fafafa; }
+.avail-name { font-size: 13px; color: #333; flex: 1; }
+.avail-code { font-size: 11px; color: #bbb; font-family: monospace; margin-right: 12px; }
+.avail-status { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 12px; white-space: nowrap; }
+.status-ok { background: #e8f5e9; color: #2e7d32; }
+.status-miss { background: #ffebee; color: #c62828; }
+.status-verify { background: #fff8e1; color: #f57f17; }
+.status-low { background: #fff8e1; color: #f57f17; }
+.avail-qty { font-size: 11px; color: #43a047; font-weight: 600; margin-right: 8px; white-space: nowrap; }
+
+/* Low / expiry / competitor blocks on cards */
+.low-list { margin-top: 8px; padding: 10px; background: #fff8e1; border-radius: 8px; }
+.low-list .ml-title { font-size: 11px; color: #f57f17; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.low-list .ml-item { font-size: 12px; color: #555; padding: 2px 0; display: flex; gap: 6px; }
+.low-list .ml-item::before { content: "•"; color: #f57f17; }
+.exp-list { margin-top: 8px; padding: 10px; background: #fff3e0; border-radius: 8px; }
+.exp-list .ml-title { font-size: 11px; color: #ef6c00; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.exp-list .ml-item { font-size: 12px; color: #555; padding: 2px 0; }
+.exp-list .ml-item .exp-dt { color: #ef6c00; font-weight: 600; }
+.comp-note { margin-top: 8px; font-size: 12px; color: #6a1b9a; padding: 8px 10px; background: #f3e5f5; border-radius: 8px; }
+.badge-low { background: #fff8e1; color: #f57f17; }
+
+/* Modal summary 4 cols */
+.modal-summary.four { grid-template-columns: repeat(4, 1fr); }
+.photo-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.photo-row img { width: 90px; height: 90px; object-fit: cover; border-radius: 10px; border: 1px solid #eee; cursor: pointer; }
+.gps-link { display: inline-block; margin-top: 10px; font-size: 13px; color: #1565c0; text-decoration: none; padding: 8px 12px; background: #e3f2fd; border-radius: 8px; }
+.modal-photo-full { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; cursor: zoom-out; }
+.modal-photo-full.open { display: flex; }
+.modal-photo-full img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+
+/* Summary bar in modal */
+.modal-summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.ms-card { background: #f9f9f9; border-radius: 10px; padding: 12px; text-align: center; }
+.ms-num { font-size: 24px; font-weight: 700; }
+.ms-lbl { font-size: 11px; color: #888; margin-top: 2px; }
+
+/* Download btn */
+.dl-btn { width: 100%; padding: 12px; background: #1a1a1a; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 16px; }
+
+/* Store summary table */
+.store-table { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+.store-table h3 { font-size: 14px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px; }
+.st-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+.st-row:last-child { border-bottom: none; }
+.st-name { font-size: 14px; font-weight: 500; }
+.st-info { font-size: 12px; color: #888; display: flex; gap: 16px; }
+.st-miss { color: #e53935; font-weight: 600; }
+.st-ok { color: #43a047; }
+
+/* Clear button */
+.clear-btn { background: #fff; border: 1px solid #ffcdd2; color: #e53935; padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.clear-btn:hover { background: #ffebee; }
+.vc-actions { margin-top: 12px; display: flex; justify-content: flex-end; }
+
+/* Analysis */
+.analysis { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+.analysis h3 { font-size: 14px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.analysis .sub { font-size: 12px; color: #aaa; margin-bottom: 16px; }
+.an-outlet-sel { padding: 9px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: #fff; cursor: pointer; outline: none; margin-bottom: 16px; }
+.an-block { margin-bottom: 20px; }
+.an-block h4 { font-size: 13px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.an-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-radius: 8px; margin-bottom: 5px; background: #fafafa; }
+.an-row .an-name { font-size: 13px; font-weight: 500; flex: 1; }
+.an-row .an-detail { font-size: 12px; color: #888; }
+.an-row.urgent { background: #fff5f5; }
+.an-pill { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 12px; white-space: nowrap; margin-left: 8px; }
+.pill-red { background: #ffebee; color: #c62828; }
+.pill-yellow { background: #fff8e1; color: #f57f17; }
+.pill-days { background: #ede7f6; color: #5e35b1; }
+.an-empty { font-size: 13px; color: #aaa; padding: 10px 0; }
+.an-reco { background: #e8f5e9; border-left: 4px solid #43a047; border-radius: 8px; padding: 10px 12px; font-size: 13px; color: #2e7d32; margin-bottom: 6px; }
+.an-reco b { font-weight: 700; }
+
+/* Export panel */
+.export-panel { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+.export-panel h3 { font-size: 14px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.export-panel .sub { font-size: 12px; color: #aaa; margin-bottom: 16px; }
+.exp-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.exp-controls input[type=date], .exp-controls select { padding: 9px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: #fff; outline: none; }
+.exp-dl-btn { background: #1a7431; color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; }
+.exp-dl-btn:hover { background: #14602a; }
+.exp-dl-btn:disabled { background: #bbb; cursor: not-allowed; }
+.exp-preview { overflow-x: auto; border: 1px solid #eee; border-radius: 10px; max-height: 420px; }
+.exp-table { border-collapse: collapse; font-size: 12px; width: 100%; white-space: nowrap; }
+.exp-table th, .exp-table td { border: 1px solid #eee; padding: 6px 9px; text-align: center; }
+.exp-table th { background: #f5f5f5; font-weight: 700; position: sticky; top: 0; }
+.exp-table td.pname { text-align: left; font-weight: 500; }
+.exp-table td.cell-ok { color: #2e7d32; font-weight: 700; }
+.exp-table td.cell-out { color: #c62828; font-weight: 700; background: #fff5f5; }
+.exp-table td.cell-low { color: #f57f17; font-weight: 700; background: #fff8e1; }
+.exp-table td.cell-na { color: #ccc; }
+.exp-table tr.total-row td { background: #fafafa; font-weight: 600; }
+.exp-empty { font-size: 13px; color: #aaa; padding: 16px 0; }
+.exp-daytabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.exp-daytab { padding: 6px 12px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: #666; font-size: 12px; font-weight: 600; cursor: pointer; }
+.exp-daytab.active { background: #1a7431; color: #fff; border-color: #1a7431; }
+.exp-range-lbl { font-size: 13px; color: #666; font-weight: 600; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>Kenko1st</h1>
+    <span>Manager Dashboard</span>
+  </div>
+  <button class="refresh-btn" onclick="loadVisits()">🔄 Refresh</button>
+</div>
+
+<div class="container">
+  <div class="err" id="err"></div>
+  <div class="last-updated" id="last-updated"></div>
+
+  <!-- Main tabs -->
+  <div class="main-tabs" id="main-tabs" style="display:none;">
+    <button class="main-tab active" id="mt-visits" onclick="showMainTab('visits')">📋 Visits</button>
+    <button class="main-tab" id="mt-orders" onclick="showMainTab('orders')">🛒 Orders <span class="tab-badge" id="orders-badge" style="display:none;">0</span></button>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary-row" id="summary-row">
+    <div class="sum-card"><div class="num" id="s-visits">-</div><div class="lbl">Total Visits Today</div></div>
+    <div class="sum-card warn"><div class="num" id="s-missing">-</div><div class="lbl">Stores with Missing Items</div></div>
+    <div class="sum-card ok"><div class="num" id="s-fullstock">-</div><div class="lbl">Full Stock Stores</div></div>
+    <div class="sum-card"><div class="num" id="s-items">-</div><div class="lbl">Total Missing Items</div></div>
+    <div class="sum-card"><div class="num" id="s-low" style="color:#f57f17;">-</div><div class="lbl">Total Low Stock Items</div></div>
+  </div>
+
+  <!-- Store Summary Table -->
+  <div class="store-table" id="store-table" style="display:none;">
+    <h3>📊 Store Overview</h3>
+    <div id="store-table-body"></div>
+  </div>
+
+  <!-- Excel Export -->
+  <div class="export-panel" id="export-panel" style="display:none;">
+    <h3>📥 Daily Stock Sheet (Excel)</h3>
+    <div class="sub">දවස් range එකක් (From–To) + outlet type එකක් තෝරලා, ඒ දවස්වල visits වලින් stock matrix — Excel එකක් (දවසකට sheet එකක්) download කරන්න</div>
+    <div class="exp-controls">
+      <span class="exp-range-lbl">From</span>
+      <input type="date" id="exp-date-from">
+      <span class="exp-range-lbl">To</span>
+      <input type="date" id="exp-date-to">
+      <select id="exp-outlet" onchange="renderExportPreview()"></select>
+      <select id="exp-mode" onchange="renderExportPreview()">
+        <option value="daily">📆 Per-day (sheet each day)</option>
+        <option value="combined">📊 Combined range (one sheet)</option>
+      </select>
+      <button class="exp-dl-btn" id="exp-dl" onclick="downloadStockSheet()">⬇ Download Excel</button>
+    </div>
+    <div class="exp-daytabs" id="exp-daytabs"></div>
+    <div class="exp-preview" id="exp-preview"></div>
+  </div>
+
+  <!-- Analysis -->
+  <div class="analysis" id="analysis" style="display:none;">
+    <h3>📊 Order Analysis</h3>
+    <div class="sub">Outlet type එකක් අනුව — නිතර නැති / Low / දිගු කාලයක් නැති items</div>
+    <select class="an-outlet-sel" id="an-outlet" onchange="renderAnalysis()"></select>
+    <div id="analysis-body"></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <select class="filter-sel" id="filter-store" onchange="renderVisits()">
+      <option value="">All Stores</option>
+    </select>
+    <select class="filter-sel" id="filter-status" onchange="renderVisits()">
+      <option value="">All Status</option>
+      <option value="missing">Has Missing Items</option>
+      <option value="low">Has Low Stock</option>
+      <option value="ok">Full Stock</option>
+    </select>
+    <span class="date-lbl" id="date-lbl"></span>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div>Loading visits...</div>
+  </div>
+
+  <!-- Visits -->
+  <div class="visits-grid" id="visits-grid"></div>
+
+  <!-- Orders -->
+  <div id="orders-view" style="display:none;">
+    <div class="orders-grid" id="orders-grid"></div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div>
+        <h2 id="modal-store">Store</h2>
+        <div class="meta" id="modal-meta"></div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('modal-overlay').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<div class="modal-photo-full" id="photo-full" onclick="this.classList.remove('open')"><img id="photo-full-img" src=""></div>
+
+<script>
+const WORKER_URL = "https://odd-grass-0c29.kenko1st-pubudu.workers.dev";
+
+// ===== DATA HELPERS (new field-tool format) =====
+// visitData = { all: { ok:[{code,name,qty?}], low:[...], missing:[...], expiry:[{code,name,dates:[]}], competitor:"", notes:"" } }
+function getSec(v) {
+  const vd = v.visitData || {};
+  // නව format එකේ "all" key එක; පරණ visits වල වෙන keys තියෙන්න පුළුවන් — merge කරනවා
+  if (vd.all) return vd.all;
+  // legacy: sections කිහිපයක් තිබ්බොත් එකතු කරනවා
+  const merged = { ok: [], low: [], missing: [], expiry: [], competitor: '', notes: '' };
+  Object.values(vd).forEach(sec => {
+    merged.ok.push(...(sec.ok || []));
+    merged.low.push(...(sec.low || []));
+    merged.missing.push(...(sec.missing || []));
+    merged.expiry.push(...(sec.expiry || []));
+    if (sec.notes) merged.notes += (merged.notes ? ' · ' : '') + sec.notes;
+    if (sec.competitor) merged.competitor += (merged.competitor ? ' · ' : '') + sec.competitor;
+  });
+  return merged;
+}
+function cntMissing(v) { return (getSec(v).missing || []).length; }
+function cntLow(v) { return (getSec(v).low || []).length; }
+function cntOk(v) { const s = getSec(v); return (s.ok || []).length; }
+function qtyStr(p) { return p.qty ? ` <span class="avail-qty">×${p.qty}</span>` : ''; }
+
+function showPhoto(src) {
+  document.getElementById('photo-full-img').src = src;
+  document.getElementById('photo-full').classList.add('open');
+}
+let allVisits = [];
+let allOrders = [];
+let mainTab = 'visits';
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+}
+
+function openModal(v) {
+  document.getElementById('modal-store').textContent = '🏪 ' + v.store;
+  const time = new Date(v.savedAt).toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  document.getElementById('modal-meta').textContent = '👤 ' + v.rep + '  ·  🕐 ' + time;
+
+  const body = document.getElementById('modal-body');
+  const sec = getSec(v);
+  const ok = sec.ok || [], low = sec.low || [], miss = sec.missing || [], exp = sec.expiry || [];
+  const totalItems = ok.length + low.length + miss.length;
+
+  let html = `<div class="modal-summary four">
+    <div class="ms-card"><div class="ms-num" style="color:#1a1a1a;">${totalItems}</div><div class="ms-lbl">Total Checked</div></div>
+    <div class="ms-card"><div class="ms-num" style="color:#2e7d32;">${ok.length}</div><div class="ms-lbl">✅ ඇත / In</div></div>
+    <div class="ms-card"><div class="ms-num" style="color:#f57f17;">${low.length}</div><div class="ms-lbl">🟡 Low Stock</div></div>
+    <div class="ms-card"><div class="ms-num" style="color:#c62828;">${miss.length}</div><div class="ms-lbl">🔴 නැත / Out</div></div>
+  </div>`;
+
+  // GPS removed on field side, but support old data
+  if (v.gps && v.gps.lat) {
+    html += `<a class="gps-link" href="https://maps.google.com/?q=${v.gps.lat},${v.gps.lng}" target="_blank">📍 View location on map</a>`;
+  }
+
+  // Photos
+  if (v.photos && v.photos.length) {
+    html += `<div class="photo-row">` + v.photos.map(src =>
+      `<img src="${src}" onclick="showPhoto('${src}')">`).join('') + `</div>`;
+  }
+
+  function itemRow(p, cls, label) {
+    return `<div class="avail-row">
+      <span class="avail-name">${p.name}</span>
+      ${qtyStr(p)}<span class="avail-code">${p.code}</span>
+      <span class="avail-status ${cls}">${label}</span>
+    </div>`;
+  }
+
+  const rows = [
+    ...miss.map(p => itemRow(p, 'status-miss', '🔴 නැත')),
+    ...low.map(p => itemRow(p, 'status-low', '🟡 Low')),
+    ...ok.map(p => itemRow(p, 'status-ok', '✅ ඇත')),
+  ];
+  if (rows.length) html += `<div class="avail-section"><h3>Shelf Availability</h3>${rows.join('')}</div>`;
+
+  // Expiry
+  if (exp.length) {
+    html += `<div class="avail-section"><h3>⏰ Expiry Dates</h3>`;
+    exp.forEach(e => {
+      const dates = (e.dates || []).map(d => {
+        const dt = new Date(d + 'T00:00:00');
+        const soon = (dt - new Date()) < 30*864e5;
+        return `<span class="${soon ? '' : ''}" style="color:${soon ? '#c62828' : '#ef6c00'};font-weight:600;">${fmtD(d)}</span>`;
+      }).join(', ');
+      html += `<div class="avail-row"><span class="avail-name">${e.name}</span><span style="font-size:12px;">${dates}</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  // Competitor
+  if (sec.competitor) html += `<div class="comp-note">🏷 <b>Competitors:</b> ${sec.competitor}</div>`;
+  // Notes
+  if (sec.notes) html += `<div style="font-size:12px;color:#888;font-style:italic;padding:8px 10px;background:#f9f9f9;border-radius:8px;margin-top:10px;">📝 ${sec.notes}</div>`;
+
+  html += `<button class="dl-btn" onclick='downloadReport(${JSON.stringify(v).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>📥 Text Report Download</button>`;
+  html += `<button class="dl-btn" style="background:#e53935;margin-top:8px;" onclick='clearVisit(${JSON.stringify(v).replace(/</g,"\u003c").replace(/'/g,"&#39;")})'>🗑 Delete This Visit</button>`;
+  body.innerHTML = html;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function fmtD(dateStr) {
+  const [y,m,d] = dateStr.split('-');
+  return d + '/' + m + '/' + y;
+}
+
+function downloadReport(v) {
+  const time = new Date(v.savedAt).toLocaleString('en-GB');
+  let text = `KENKO1ST AVAILABILITY REPORT\n`;
+  text += `${'='.repeat(40)}\n`;
+  text += `Store  : ${v.store}\n`;
+  text += `Rep    : ${v.rep}\n`;
+  text += `Date   : ${time}\n`;
+  text += `${'='.repeat(40)}\n\n`;
+
+  const sec = getSec(v);
+  const ok = sec.ok || [], low = sec.low || [], miss = sec.missing || [], exp = sec.expiry || [];
+
+  if (miss.length) {
+    text += `🔴 MISSING (${miss.length})\n${'-'.repeat(30)}\n`;
+    miss.forEach(p => { text += `  • ${p.name}\n`; });
+    text += '\n';
+  }
+  if (low.length) {
+    text += `🟡 LOW STOCK (${low.length})\n${'-'.repeat(30)}\n`;
+    low.forEach(p => { text += `  • ${p.name}${p.qty ? ' ×'+p.qty : ''}\n`; });
+    text += '\n';
+  }
+  if (ok.length) {
+    text += `✅ AVAILABLE (${ok.length})\n${'-'.repeat(30)}\n`;
+    ok.forEach(p => { text += `  • ${p.name}${p.qty ? ' ×'+p.qty : ''}\n`; });
+    text += '\n';
+  }
+  if (exp.length) {
+    text += `⏰ EXPIRY DATES\n${'-'.repeat(30)}\n`;
+    exp.forEach(e => { text += `  • ${e.name} — ${(e.dates||[]).map(fmtD).join(', ')}\n`; });
+    text += '\n';
+  }
+  if (sec.competitor) text += `🏷 Competitors: ${sec.competitor}\n\n`;
+  if (sec.notes) text += `📝 Notes: ${sec.notes}\n\n`;
+
+  text += `${'='.repeat(40)}\n`;
+  text += `MISSING: ${miss.length}  ·  LOW: ${low.length}\n`;
+  text += `STATUS: ${miss.length === 0 && low.length === 0 ? 'FULL STOCK ✅' : 'ACTION REQUIRED ⚠'}\n`;
+
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `kenko1st_${v.store.replace(/\s+/g,'_')}_${new Date(v.savedAt).toISOString().slice(0,10)}.txt`;
+  a.click();
+}
+
+async function loadVisits() {
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('visits-grid').innerHTML = '';
+  document.getElementById('err').style.display = 'none';
+
+  try {
+    const resp = await fetch(`${WORKER_URL}/get-visits`);
+    if (!resp.ok) throw new Error('Server error ' + resp.status);
+    const raw = await resp.json();
+    if (!Array.isArray(raw)) throw new Error('Invalid response');
+    // orders vs visits වෙන් කරනවා
+    allOrders = raw.filter(v => v.type === 'order');
+    allVisits = raw.filter(v => v.type !== 'order');
+
+    document.getElementById('main-tabs').style.display = allOrders.length ? 'flex' : 'none';
+    populateStoreFilter();
+    renderSummary();
+    renderStoreTable();
+    renderAnalysisOutlets();
+    setupExport();
+    renderVisits();
+    renderOrders();
+    document.getElementById('last-updated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+    document.getElementById('date-lbl').textContent = new Date().toLocaleDateString('en-GB', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  } catch(e) {
+    document.getElementById('err').style.display = 'block';
+    document.getElementById('err').textContent = '⚠ Error: ' + e.message;
+  } finally {
+    document.getElementById('loading').style.display = 'none';
+  }
+}
+
+function populateStoreFilter() {
+  const sel = document.getElementById('filter-store');
+  const stores = [...new Set(allVisits.map(v => v.store))].sort();
+  sel.innerHTML = '<option value="">All Stores</option>';
+  stores.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
+}
+
+function getTotalMissing(visitData) {
+  return cntMissing({ visitData });
+}
+function getTotalLow(visitData) {
+  return cntLow({ visitData });
+}
+
+function renderSummary() {
+  const today = new Date().toDateString();
+  const todayVisits = allVisits.filter(v => new Date(v.savedAt).toDateString() === today);
+  const withMissing = todayVisits.filter(v => getTotalMissing(v.visitData) > 0);
+  const fullStock = todayVisits.filter(v => getTotalMissing(v.visitData) === 0);
+  const totalMissingItems = todayVisits.reduce((sum, v) => sum + getTotalMissing(v.visitData), 0);
+  const totalLowItems = todayVisits.reduce((sum, v) => sum + getTotalLow(v.visitData), 0);
+
+  document.getElementById('s-visits').textContent = todayVisits.length || allVisits.length;
+  document.getElementById('s-missing').textContent = withMissing.length;
+  document.getElementById('s-fullstock').textContent = fullStock.length;
+  document.getElementById('s-items').textContent = totalMissingItems;
+  document.getElementById('s-low').textContent = totalLowItems;
+}
+
+function renderStoreTable() {
+  const table = document.getElementById('store-table');
+  const body = document.getElementById('store-table-body');
+  if (!allVisits.length) { table.style.display = 'none'; return; }
+
+  // Latest visit per store
+  const storeMap = {};
+  allVisits.forEach(v => {
+    if (!storeMap[v.store] || new Date(v.savedAt) > new Date(storeMap[v.store].savedAt)) {
+      storeMap[v.store] = v;
+    }
+  });
+
+  table.style.display = 'block';
+  body.innerHTML = Object.entries(storeMap).map(([store, v]) => {
+    const miss = getTotalMissing(v.visitData);
+    const low = getTotalLow(v.visitData);
+    const time = new Date(v.savedAt).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+    const date = new Date(v.savedAt).toLocaleDateString('en-GB');
+    const statusHTML = miss > 0
+      ? `<span class="st-miss">🔴 ${miss} missing</span>`
+      : (low > 0 ? `<span style="color:#f57f17;font-weight:600;">🟡 ${low} low</span>` : `<span class="st-ok">✅ Full stock</span>`);
+    return `<div class="st-row">
+      <div class="st-name">🏪 ${store}</div>
+      <div class="st-info">
+        <span>👤 ${v.rep}</span>
+        <span>🕐 ${date} ${time}</span>
+        ${low > 0 && miss > 0 ? `<span style="color:#f57f17;font-weight:600;">🟡 ${low} low</span>` : ''}
+        ${statusHTML}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderVisits() {
+  const grid = document.getElementById('visits-grid');
+  const storeFilter = document.getElementById('filter-store').value;
+  const statusFilter = document.getElementById('filter-status').value;
+
+  let filtered = allVisits;
+  if (storeFilter) filtered = filtered.filter(v => v.store === storeFilter);
+  if (statusFilter === 'missing') filtered = filtered.filter(v => getTotalMissing(v.visitData) > 0);
+  if (statusFilter === 'low') filtered = filtered.filter(v => getTotalLow(v.visitData) > 0);
+  if (statusFilter === 'ok') filtered = filtered.filter(v => getTotalMissing(v.visitData) === 0 && getTotalLow(v.visitData) === 0);
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1;"><div class="icon">📭</div><div>No visits found</div></div>`;
+    return;
+  }
+
+  // Store filtered visits globally for modal access
+  window._filteredVisits = filtered;
+
+  grid.innerHTML = filtered.map((v, idx) => {
+    const sec = getSec(v);
+    const miss = sec.missing || [], low = sec.low || [], ok = sec.ok || [], exp = sec.expiry || [];
+    const totalMiss = miss.length, totalLow = low.length;
+    const time = new Date(v.savedAt).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+
+    const summaryHTML = `<div class="vc-sec">
+      <span class="vc-sec-name">Shelf status</span>
+      <span class="vc-sec-status">
+        <span class="sec-ok">✅ ${ok.length}</span> &nbsp;
+        <span style="color:#f57f17;font-weight:600;">🟡 ${totalLow}</span> &nbsp;
+        <span class="sec-miss">🔴 ${totalMiss}</span>
+      </span>
+    </div>`;
+
+    let missingHTML = '';
+    if (totalMiss > 0) {
+      missingHTML = `<div class="missing-list">
+        <div class="ml-title">🔴 Missing (${totalMiss})</div>
+        ${miss.map(p => `<div class="ml-item">${p.name}</div>`).join('')}
+      </div>`;
+    }
+    let lowHTML = '';
+    if (totalLow > 0) {
+      lowHTML = `<div class="low-list">
+        <div class="ml-title">🟡 Low Stock (${totalLow})</div>
+        ${low.map(p => `<div class="ml-item">${p.name}${p.qty ? ' ×'+p.qty : ''}</div>`).join('')}
+      </div>`;
+    }
+    let expHTML = '';
+    if (exp.length > 0) {
+      expHTML = `<div class="exp-list">
+        <div class="ml-title">⏰ Expiry (${exp.length})</div>
+        ${exp.map(e => `<div class="ml-item">${e.name} — <span class="exp-dt">${(e.dates||[]).map(fmtD).join(', ')}</span></div>`).join('')}
+      </div>`;
+    }
+    const compHTML = sec.competitor ? `<div class="comp-note">🏷 ${sec.competitor}</div>` : '';
+    const notesHTML = sec.notes ? `<div class="vc-notes">📝 ${sec.notes}</div>` : '';
+    const photoTag = (v.photos && v.photos.length) ? ` 📷${v.photos.length}` : '';
+
+    const cardCls = totalMiss > 0 ? 'has-missing' : 'all-ok';
+    const badge = totalMiss > 0
+      ? `<span class="vc-badge badge-miss">${totalMiss} missing</span>`
+      : (totalLow > 0 ? `<span class="vc-badge badge-low">${totalLow} low</span>` : `<span class="vc-badge badge-ok">Full Stock</span>`);
+
+    return `<div class="visit-card ${cardCls}" onclick="openModal(window._filteredVisits[${idx}])" style="cursor:pointer;" title="Click to view full report">
+      <div class="vc-header">
+        <div>
+          <div class="vc-store">🏪 ${v.store}${photoTag}</div>
+          <div class="vc-meta">👤 ${v.rep} &nbsp;·&nbsp; 🕐 ${time}</div>
+        </div>
+        ${badge}
+      </div>
+      <div class="vc-sections">${summaryHTML}${missingHTML}${lowHTML}${expHTML}${compHTML}${notesHTML}</div>
+      <div class="vc-actions">
+        <button class="clear-btn" onclick="event.stopPropagation(); clearVisit(window._filteredVisits[${idx}])">🗑 Clear</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===== DELETE / CLEAR VISIT =====
+async function clearVisit(v) {
+  if (!v) return;
+  const time = new Date(v.savedAt).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+  if (!confirm(`Delete this visit?\n\n🏪 ${v.store}\n👤 ${v.rep}\n🕐 ${time}\n\nමේක server එකෙන් සම්පූර්ණයෙන්ම අයින් වෙනවා.`)) return;
+  try {
+    const resp = await fetch(`${WORKER_URL}/delete-visit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: v._key, savedAt: v.savedAt })
+    });
+    const data = await resp.json();
+    if (!data.success) throw new Error(data.error || 'delete failed');
+    // local list එකෙනුත් අයින් කරලා re-render
+    allVisits = allVisits.filter(x => x.savedAt !== v.savedAt);
+    allOrders = allOrders.filter(x => x.savedAt !== v.savedAt);
+    document.getElementById('modal-overlay').classList.remove('open');
+    document.getElementById('main-tabs').style.display = allOrders.length ? 'flex' : 'none';
+    populateStoreFilter();
+    renderSummary();
+    renderStoreTable();
+    renderAnalysisOutlets();
+    renderVisits();
+    renderOrders();
+    if (mainTab === 'orders' && !allOrders.length) showMainTab('visits');
+  } catch(e) {
+    alert('⚠ Clear error: ' + e.message);
+  }
+}
+
+// ===== MAIN TABS (Visits / Orders) =====
+function showMainTab(tab) {
+  mainTab = tab;
+  document.getElementById('mt-visits').classList.toggle('active', tab === 'visits');
+  document.getElementById('mt-orders').classList.toggle('active', tab === 'orders');
+  // visits-only sections
+  const visitsMode = tab === 'visits';
+  ['summary-row','store-table','export-panel','analysis'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (id === 'summary-row') { el.style.display = visitsMode ? 'grid' : 'none'; return; }
+    // store-table/export/analysis: keep their own display logic but hide in orders mode
+    if (visitsMode) { el.dataset.hidden = ''; el.style.display = el.dataset.origDisplay || 'block'; }
+    else { el.dataset.origDisplay = el.style.display; el.style.display = 'none'; }
+  });
+  document.querySelector('.filters').style.display = visitsMode ? 'flex' : 'none';
+  document.getElementById('visits-grid').style.display = visitsMode ? 'grid' : 'none';
+  document.getElementById('orders-view').style.display = visitsMode ? 'none' : 'block';
+}
+
+function renderOrders() {
+  const badge = document.getElementById('orders-badge');
+  // අද orders
+  const today = new Date().toDateString();
+  const todayOrders = allOrders.filter(o => new Date(o.savedAt).toDateString() === today);
+  if (allOrders.length) { badge.style.display = 'inline'; badge.textContent = todayOrders.length || allOrders.length; }
+  else badge.style.display = 'none';
+
+  const grid = document.getElementById('orders-grid');
+  if (!allOrders.length) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="icon">🛒</div><div>No orders yet</div></div>';
+    return;
+  }
+  const sorted = allOrders.slice().sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+  window._orders = sorted;
+  grid.innerHTML = sorted.map((o, idx) => {
+    const items = o.orderItems || [];
+    const time = new Date(o.savedAt).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+    const rows = items.map(p => `<div class="oc-item"><span>${p.name}</span><span class="oc-qty">${p.qty}</span></div>`).join('');
+    return `<div class="order-card">
+      <div class="oc-head">
+        <div>
+          <div class="oc-store">🛒 ${o.store}</div>
+          <div class="oc-meta">👤 ${o.rep} &nbsp;·&nbsp; 🕐 ${time}</div>
+        </div>
+        <span class="oc-badge">${items.length} items</span>
+      </div>
+      ${rows}
+      <div class="oc-actions">
+        <button class="oc-wa" onclick="shareOrder(window._orders[${idx}])">📲 WhatsApp</button>
+        <button class="clear-btn" onclick="clearVisit(window._orders[${idx}])">🗑 Clear</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function buildOrderText(o) {
+  const items = o.orderItems || [];
+  const time = new Date(o.savedAt).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+  let t = `🛒 KENKO1ST ORDER\n━━━━━━━━━━━━━━━━━━━━\n`;
+  t += `Store: ${o.store}\nRep: ${o.rep}\nDate: ${time}\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+  items.forEach((p, i) => { t += `${i+1}. ${p.name} — ${p.qty}\n`; });
+  t += `\n━━━━━━━━━━━━━━━━━━━━\nTotal items: ${items.length}`;
+  return t;
+}
+
+function shareOrder(o) {
+  const text = buildOrderText(o);
+  if (navigator.share) { navigator.share({ title: 'Kenko1st Order', text }).catch(()=>{}); }
+  else {
+    const wa = 'https://wa.me/?text=' + encodeURIComponent(text);
+    window.open(wa, '_blank');
+  }
+}
+
+// ===== EXCEL EXPORT (daily stock matrix, SPAR-style) =====
+function ymd(dateObj) {
+  const d = new Date(dateObj);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function locShort(store, base) {
+  const s = store.replace(base, '').replace(/^\s*-\s*/, '').trim();
+  return s || base;
+}
+
+function setupExport() {
+  const panel = document.getElementById('export-panel');
+  if (!allVisits.length) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  // default: from = 7 දවසකට කලින්, to = අලුත්ම visit එකේ date එක
+  const fromInp = document.getElementById('exp-date-from');
+  const toInp = document.getElementById('exp-date-to');
+  const latest = allVisits.reduce((a, v) => new Date(v.savedAt) > new Date(a) ? v.savedAt : a, allVisits[0].savedAt);
+  if (!toInp.value) toInp.value = ymd(latest);
+  if (!fromInp.value) {
+    const wk = new Date(latest); wk.setDate(wk.getDate() - 6);
+    fromInp.value = ymd(wk);
+  }
+  fromInp.onchange = () => { if (fromInp.value > toInp.value) toInp.value = fromInp.value; populateExportOutlets(); renderExportPreview(); };
+  toInp.onchange = () => { if (toInp.value < fromInp.value) fromInp.value = toInp.value; populateExportOutlets(); renderExportPreview(); };
+  populateExportOutlets();
+  renderExportPreview();
+}
+
+// range එකේ, data තියෙන දවස් (ascending) — outlet එකට filter කරන්නත් පුළුවන්
+function datesInRange(base) {
+  const from = document.getElementById('exp-date-from').value;
+  const to = document.getElementById('exp-date-to').value;
+  if (!from || !to) return [];
+  const set = new Set();
+  allVisits.forEach(v => {
+    const d = ymd(v.savedAt);
+    if (d >= from && d <= to && (!base || baseOutlet(v.store) === base)) set.add(d);
+  });
+  return [...set].sort();
+}
+
+// තෝරපු දවසේ visits වල outlet types
+function visitsOnDate(dateStr) {
+  return allVisits.filter(v => ymd(v.savedAt) === dateStr);
+}
+function populateExportOutlets() {
+  const sel = document.getElementById('exp-outlet');
+  const from = document.getElementById('exp-date-from').value;
+  const to = document.getElementById('exp-date-to').value;
+  const inRange = allVisits.filter(v => { const d = ymd(v.savedAt); return d >= from && d <= to; });
+  const bases = [...new Set(inRange.map(v => baseOutlet(v.store)))].sort();
+  const prev = sel.value;
+  sel.innerHTML = bases.map(b => `<option value="${b}">${b}</option>`).join('');
+  if (bases.includes(prev)) sel.value = prev;
+}
+
+// stock matrix එක build කරනවා: { locations, rows:[{code,name,cells:{loc:'ok'|'out'|'low'|''}, out, low}] }
+function buildStockMatrix(dateStr, base) {
+  const visits = visitsOnDate(dateStr).filter(v => baseOutlet(v.store) === base);
+  if (!visits.length) return null;
+
+  // location එකකට අලුත්ම visit එක (එක දවසේ දෙපාරක් ගියොත්)
+  const latestPerLoc = {};
+  visits.forEach(v => {
+    if (!latestPerLoc[v.store] || new Date(v.savedAt) > new Date(latestPerLoc[v.store].savedAt)) latestPerLoc[v.store] = v;
+  });
+  const locStores = Object.keys(latestPerLoc).sort();
+  const locations = locStores.map(s => locShort(s, base));
+
+  // item map: code -> { name, perLoc:{loc: status} }
+  const items = {};
+  locStores.forEach(store => {
+    const loc = locShort(store, base);
+    const sec = getSec(latestPerLoc[store]);
+    (sec.ok || []).forEach(p => reg(p, loc, 'ok'));
+    (sec.low || []).forEach(p => reg(p, loc, 'low'));
+    (sec.missing || []).forEach(p => reg(p, loc, 'out'));
+  });
+  function reg(p, loc, status) {
+    const cleanName = p.name.replace(' (LOW STOCK)', '');
+    if (!items[p.code]) items[p.code] = { code: p.code, name: cleanName, perLoc: {} };
+    items[p.code].perLoc[loc] = status;
+  }
+
+  const rows = Object.values(items).map(it => {
+    let out = 0, low = 0;
+    const cells = {};
+    locations.forEach(loc => {
+      const st = it.perLoc[loc] || '';
+      cells[loc] = st;
+      if (st === 'out') out++;
+      if (st === 'low') low++;
+    });
+    return { code: it.code, name: it.name, cells, out, low };
+  });
+  // OUT වැඩිපුර ඒවා උඩට (SPAR sheet එක වගේ)
+  rows.sort((a, b) => b.out - a.out || b.low - a.low || a.name.localeCompare(b.name));
+
+  return { locations, rows };
+}
+
+// range එකේ ඔක්කොම visits එකම sheet එකකට — column එකක් = එක visit එකක් ("Location (dd/mm)")
+function buildCombinedMatrix(base) {
+  const from = document.getElementById('exp-date-from').value;
+  const to = document.getElementById('exp-date-to').value;
+  const visits = allVisits.filter(v => {
+    const d = ymd(v.savedAt);
+    return d >= from && d <= to && baseOutlet(v.store) === base;
+  });
+  if (!visits.length) return null;
+
+  // column එකක් = එක visit එකක්. location → date order එකට sort.
+  visits.sort((a, b) => {
+    const la = locShort(a.store, base), lb = locShort(b.store, base);
+    return la.localeCompare(lb) || new Date(a.savedAt) - new Date(b.savedAt);
+  });
+
+  // එකම location එක එකම දවසේ දෙපාරක් තිබ්බොත් අලුත්ම එක විතරක් (duplicate column අඩු කරන්න)
+  const seen = {};
+  const cols = [];
+  visits.forEach(v => {
+    const loc = locShort(v.store, base);
+    const dstr = ymd(v.savedAt);
+    const key = loc + '|' + dstr;
+    if (seen[key]) {
+      // අලුත්ම එක තියාගන්නවා
+      if (new Date(v.savedAt) > new Date(seen[key].v.savedAt)) seen[key].v = v;
+      return;
+    }
+    const col = { key, loc, date: dstr, label: `${loc} (${dd_mm(dstr)})`, v };
+    seen[key] = col;
+    cols.push(col);
+  });
+
+  // item map: code -> { name, cells:{colKey: status} }
+  const items = {};
+  cols.forEach(col => {
+    const sec = getSec(col.v);
+    (sec.ok || []).forEach(p => reg(p, col.key, 'ok'));
+    (sec.low || []).forEach(p => reg(p, col.key, 'low'));
+    (sec.missing || []).forEach(p => reg(p, col.key, 'out'));
+  });
+  function reg(p, colKey, status) {
+    const cleanName = p.name.replace(' (LOW STOCK)', '');
+    if (!items[p.code]) items[p.code] = { code: p.code, name: cleanName, perLoc: {} };
+    items[p.code].perLoc[colKey] = status;
+  }
+
+  const colLabels = cols.map(c => c.label);
+  const rows = Object.values(items).map(it => {
+    let out = 0, low = 0;
+    const cells = {};
+    cols.forEach(c => {
+      const st = it.perLoc[c.key] || '';
+      cells[c.label] = st;
+      if (st === 'out') out++;
+      if (st === 'low') low++;
+    });
+    return { code: it.code, name: it.name, cells, out, low };
+  });
+  rows.sort((a, b) => b.out - a.out || b.low - a.low || a.name.localeCompare(b.name));
+
+  return { locations: colLabels, rows };
+}
+
+function dd_mm(dateStr) {
+  const [y, m, d] = dateStr.split('-');
+  return d + '/' + m;
+}
+
+let expPreviewDay = '';  // preview එකේ දැනට පේන දවස
+
+function renderExportPreview() {
+  const base = document.getElementById('exp-outlet').value;
+  const mode = document.getElementById('exp-mode').value;
+  const box = document.getElementById('exp-preview');
+  const tabsEl = document.getElementById('exp-daytabs');
+  const dl = document.getElementById('exp-dl');
+
+  if (!base) { tabsEl.innerHTML = ''; box.innerHTML = '<div class="exp-empty">ඒ range එකට visits නැහැ</div>'; dl.disabled = true; return; }
+
+  const days = datesInRange(base);
+  if (!days.length) { tabsEl.innerHTML = ''; box.innerHTML = '<div class="exp-empty">ඒ range එකට visits නැහැ</div>'; dl.disabled = true; return; }
+  dl.disabled = false;
+
+  let m;
+  if (mode === 'combined') {
+    // combined — day tabs නැහැ, එක table එකක්
+    tabsEl.innerHTML = `<span style="font-size:12px;color:#888;align-self:center;">📊 ${days.length} days combined · column එකක් = visit එකක් (${fmtDayTab(days[0])} → ${fmtDayTab(days[days.length-1])})</span>`;
+    m = buildCombinedMatrix(base);
+  } else {
+    // per-day — day tabs
+    if (!days.includes(expPreviewDay)) expPreviewDay = days[days.length - 1];
+    tabsEl.innerHTML = days.map(d =>
+      `<button class="exp-daytab ${d === expPreviewDay ? 'active' : ''}" onclick="expPreviewDay='${d}'; renderExportPreview();">${fmtDayTab(d)}</button>`
+    ).join('') + (days.length > 1 ? `<span style="font-size:12px;color:#aaa;align-self:center;margin-left:6px;">${days.length} days → Excel එකේ sheet ${days.length}ක්</span>` : '');
+    m = buildStockMatrix(expPreviewDay, base);
+  }
+
+  if (!m || !m.rows.length) { box.innerHTML = '<div class="exp-empty">visits නැහැ</div>'; return; }
+
+  const sym = { ok: '✓', out: '0', low: 'LOW', '': '–' };
+  const cls = { ok: 'cell-ok', out: 'cell-out', low: 'cell-low', '': 'cell-na' };
+  let html = '<table class="exp-table"><thead><tr><th>#</th><th>Code</th><th>Product Description</th>';
+  m.locations.forEach(l => html += `<th>${l}</th>`);
+  html += '<th>OUT</th><th>LOW</th></tr></thead><tbody>';
+  m.rows.forEach((r, i) => {
+    html += `<tr><td>${i+1}</td><td>${r.code}</td><td class="pname">${r.name}</td>`;
+    m.locations.forEach(l => { const st = r.cells[l]; html += `<td class="${cls[st]}">${sym[st]}</td>`; });
+    html += `<td class="cell-out">${r.out || ''}</td><td class="cell-low">${r.low || ''}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  box.innerHTML = html;
+}
+
+function fmtDayTab(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+}
+
+function sheetFromMatrix(m) {
+  const sym = { ok: '✓', out: '0', low: 'LOW', '': '' };
+  const header = ['#', 'Code', 'Product Description', ...m.locations, 'OUT', 'LOW'];
+  const aoa = [header];
+  m.rows.forEach((r, i) => {
+    aoa.push([i+1, r.code, r.name, ...m.locations.map(l => sym[r.cells[l]]), r.out || 0, r.low || 0]);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{ wch: 4 }, { wch: 10 }, { wch: 34 }, ...m.locations.map(() => ({ wch: 12 })), { wch: 6 }, { wch: 6 }];
+  ws['!freeze'] = { xSplit: 3, ySplit: 1 };
+  return ws;
+}
+
+function downloadStockSheet() {
+  const base = document.getElementById('exp-outlet').value;
+  const mode = document.getElementById('exp-mode').value;
+  const days = datesInRange(base);
+  if (!days.length) return;
+
+  const wb = XLSX.utils.book_new();
+  const from = days[0].replace(/-/g,'_').slice(5);
+  const to = days[days.length-1].replace(/-/g,'_').slice(5);
+
+  if (mode === 'combined') {
+    const m = buildCombinedMatrix(base);
+    if (!m || !m.rows.length) return;
+    const name = days.length === 1 ? days[0].slice(5).replace('-', ' ') : 'Combined';
+    XLSX.utils.book_append_sheet(wb, sheetFromMatrix(m), name);
+    const fname = days.length === 1
+      ? `${base.replace(/\s+/g,'_')}_Stock_${from}.xlsx`
+      : `${base.replace(/\s+/g,'_')}_Stock_${from}_to_${to}_combined.xlsx`;
+    XLSX.writeFile(wb, fname);
+    return;
+  }
+
+  // per-day: sheet each day
+  let added = 0;
+  days.forEach(dateStr => {
+    const m = buildStockMatrix(dateStr, base);
+    if (!m || !m.rows.length) return;
+    let name = dateStr.slice(5).replace('-', ' ');
+    if (wb.SheetNames.includes(name)) name = dateStr.replace(/-/g, ' ');
+    XLSX.utils.book_append_sheet(wb, sheetFromMatrix(m), name);
+    added++;
+  });
+  if (!added) return;
+  const fname = days.length === 1
+    ? `${base.replace(/\s+/g,'_')}_Stock_${from}.xlsx`
+    : `${base.replace(/\s+/g,'_')}_Stock_${from}_to_${to}.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+// ===== ANALYSIS =====
+// outlet "type" = store name එකේ base part (location එකට කලින්) — "Spar - Kb" -> "Spar"
+function baseOutlet(store) {
+  return store.split(' - ')[0].trim();
+}
+
+function renderAnalysisOutlets() {
+  const box = document.getElementById('analysis');
+  const sel = document.getElementById('an-outlet');
+  const bases = [...new Set(allVisits.map(v => baseOutlet(v.store)))].sort();
+  if (!bases.length) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  const prev = sel.value;
+  sel.innerHTML = bases.map(b => `<option value="${b}">${b} (${allVisits.filter(v => baseOutlet(v.store) === b).length} visits)</option>`).join('');
+  if (bases.includes(prev)) sel.value = prev;
+  renderAnalysis();
+}
+
+function daysAgo(dateStr) {
+  return Math.floor((Date.now() - new Date(dateStr)) / 864e5);
+}
+
+function renderAnalysis() {
+  const base = document.getElementById('an-outlet').value;
+  const body = document.getElementById('analysis-body');
+  const visits = allVisits.filter(v => baseOutlet(v.store) === base);
+  if (!visits.length) { body.innerHTML = '<div class="an-empty">No data</div>'; return; }
+
+  // මේ outlet type එකේ location(store) කීයක් තියෙනවද
+  const locations = [...new Set(visits.map(v => v.store))];
+
+  // location එකකට අලුත්ම visit එක
+  const latestPerLoc = {};
+  visits.forEach(v => {
+    if (!latestPerLoc[v.store] || new Date(v.savedAt) > new Date(latestPerLoc[v.store].savedAt)) {
+      latestPerLoc[v.store] = v;
+    }
+  });
+
+  // ---- item එකක් කී location වල missing/low ද (අලුත්ම visit අනුව) ----
+  const itemStat = {}; // name -> { missLocs:Set, lowLocs:Set, code }
+  Object.values(latestPerLoc).forEach(v => {
+    const sec = getSec(v);
+    (sec.missing || []).forEach(p => {
+      if (!itemStat[p.name]) itemStat[p.name] = { missLocs: new Set(), lowLocs: new Set(), code: p.code };
+      itemStat[p.name].missLocs.add(v.store);
+    });
+    (sec.low || []).forEach(p => {
+      if (!itemStat[p.name]) itemStat[p.name] = { missLocs: new Set(), lowLocs: new Set(), code: p.code };
+      itemStat[p.name].lowLocs.add(v.store);
+    });
+  });
+
+  // ---- item එකක් කී දවසක් තිස්සේ missing ද (එකම location එකේ පිට පිට visits) ----
+  // location එකකට visits date order එකට බලලා, අන්තිම visits වල අඛණ්ඩව missing නම් — කවදා ඉඳන්ද
+  const streak = {}; // name -> { loc, days, since }
+  locations.forEach(loc => {
+    const locVisits = visits.filter(v => v.store === loc).sort((a,b) => new Date(b.savedAt) - new Date(a.savedAt));
+    if (locVisits.length < 1) return;
+    // අලුත්ම visit එකේ missing items
+    const latestMiss = new Set((getSec(locVisits[0]).missing || []).map(p => p.name));
+    latestMiss.forEach(name => {
+      // කවදා ඉඳන් අඛණ්ඩව missing ද — පරණ visits බලනවා
+      let since = locVisits[0].savedAt;
+      for (let i = 1; i < locVisits.length; i++) {
+        const missSet = new Set((getSec(locVisits[i]).missing || []).map(p => p.name));
+        if (missSet.has(name)) since = locVisits[i].savedAt;
+        else break;
+      }
+      const d = daysAgo(since);
+      if (!streak[name] || d > streak[name].days) streak[name] = { loc, days: d, since };
+    });
+  });
+
+  let html = `<div style="font-size:12px;color:#888;margin-bottom:14px;">🏪 ${base} — ${locations.length} location(s): ${locations.map(l => l.replace(base,'').replace(/^ - /,'') || base).join(', ')}</div>`;
+
+  // ---- Recommendations (order කරන්න ඕන) ----
+  const multiMiss = Object.entries(itemStat)
+    .filter(([n, s]) => s.missLocs.size >= 2)
+    .sort((a, b) => b[1].missLocs.size - a[1].missLocs.size);
+  const allLocMiss = multiMiss.filter(([n, s]) => s.missLocs.size === locations.length && locations.length > 1);
+
+  if (allLocMiss.length || multiMiss.length) {
+    html += `<div class="an-block"><h4>🛒 Order කරන්න ඕන (multiple locations)</h4>`;
+    if (allLocMiss.length) {
+      allLocMiss.forEach(([name, s]) => {
+        html += `<div class="an-reco">🔴 <b>${name}</b> — ${base} <b>ඔක්කොම ${locations.length} locations</b> වලම නැත. ඉක්මනට order කරන්න!</div>`;
+      });
+    }
+    multiMiss.filter(([n,s]) => !(s.missLocs.size === locations.length && locations.length > 1)).forEach(([name, s]) => {
+      html += `<div class="an-row urgent"><span class="an-name">${name}</span><span class="an-detail">${[...s.missLocs].map(l=>l.replace(base,'').replace(/^ - /,'')||base).join(', ')}</span><span class="an-pill pill-red">${s.missLocs.size} locations නැත</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  // ---- Long-missing (දිගු කාලයක්) ----
+  const longMiss = Object.entries(streak).filter(([n, s]) => s.days >= 7).sort((a, b) => b[1].days - a[1].days);
+  if (longMiss.length) {
+    html += `<div class="an-block"><h4>⏳ දිගු කාලයක් තිස්සේ නැත (check කරන්න)</h4>`;
+    longMiss.forEach(([name, s]) => {
+      const locShort = s.loc.replace(base,'').replace(/^ - /,'') || base;
+      html += `<div class="an-row urgent"><span class="an-name">${name}</span><span class="an-detail">${locShort}</span><span class="an-pill pill-days">${s.days} days නැත</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  // ---- All current missing / low (latest per location) ----
+  const missNow = Object.entries(itemStat).filter(([n, s]) => s.missLocs.size > 0).sort((a,b) => b[1].missLocs.size - a[1].missLocs.size);
+  const lowNow = Object.entries(itemStat).filter(([n, s]) => s.lowLocs.size > 0).sort((a,b) => b[1].lowLocs.size - a[1].lowLocs.size);
+
+  if (missNow.length) {
+    html += `<div class="an-block"><h4>🔴 දැන් Missing items (${missNow.length})</h4>`;
+    missNow.forEach(([name, s]) => {
+      html += `<div class="an-row"><span class="an-name">${name}</span><span class="an-pill pill-red">${s.missLocs.size}/${locations.length}</span></div>`;
+    });
+    html += `</div>`;
+  }
+  if (lowNow.length) {
+    html += `<div class="an-block"><h4>🟡 Low Stock items (${lowNow.length})</h4>`;
+    lowNow.forEach(([name, s]) => {
+      html += `<div class="an-row"><span class="an-name">${name}</span><span class="an-pill pill-yellow">${s.lowLocs.size}/${locations.length}</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (!missNow.length && !lowNow.length) {
+    html += `<div class="an-reco">✅ ${base} — දැනට missing/low items නැහැ. Full stock!</div>`;
+  }
+
+  body.innerHTML = html;
+}
+
+// Auto refresh every 2 minutes
+loadVisits();
+setInterval(loadVisits, 120000);
+</script>
+</body>
+</html>
