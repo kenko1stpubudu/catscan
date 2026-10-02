@@ -197,6 +197,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .ls-btn.ls-grav.active { background: #4aa3df; color: #0f0f0f; }
 .edit-toggle { background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 10px; color: #888; font-family: inherit; font-size: 12px; font-weight: 700; padding: 10px 12px; cursor: pointer; white-space: nowrap; }
 .edit-toggle.active { background: rgba(255,140,0,0.15); color: #ff8c00; border-color: #ff8c0066; }
+.bs-toggle { background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 10px; color: #888; font-family: inherit; font-size: 12px; font-weight: 700; padding: 10px 12px; cursor: pointer; white-space: nowrap; }
+.bs-toggle.active { background: rgba(74,163,223,0.18); color: #4aa3df; border-color: #4aa3df66; }
+.bs-banner { background: rgba(74,163,223,0.1); border: 1px solid #4aa3df44; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #4aa3df; margin-bottom: 10px; }
+.bs-row { display: flex; align-items: center; gap: 8px; }
+.bs-input { width: 64px; background: #0f0f0f; border: 1px solid #4aa3df55; border-radius: 9px; color: #f0f0f0; font-family: inherit; font-size: 15px; font-weight: 700; padding: 8px; text-align: center; outline: none; }
+.bs-input:focus { border-color: #4aa3df; }
+.bs-unit { font-size: 11px; color: #789; }
+.bs-has { font-size: 10px; color: #4aa3df; background: rgba(74,163,223,0.12); border-radius: 5px; padding: 1px 6px; margin-left: 6px; }
 .edit-mode-banner { background: rgba(255,140,0,0.1); border: 1px solid #ff8c0044; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #ff8c00; margin-bottom: 10px; }
 .cl-rm { background: rgba(255,82,82,0.14); color: #ff5252; border: none; width: 30px; height: 30px; border-radius: 8px; font-size: 15px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
 .edit-add-box { background: #161616; border: 1px solid #ff8c0033; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
@@ -350,10 +358,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="search-row">
     <input type="text" id="item-search" placeholder="" autocomplete="off" oninput="searchTerm = this.value; renderChecklist();">
     <button class="filter-btn" id="filter-unchecked" onclick="toggleUncheckedFilter()"></button>
+    <button class="bs-toggle" id="backstock-toggle" onclick="toggleBackstock()" style="display:none;">📦</button>
     <button class="edit-toggle" id="edit-list-toggle" onclick="toggleEditMode()">✏️</button>
   </div>
 
   <div class="edit-mode-banner" id="edit-mode-banner" style="display:none;"></div>
+  <div class="bs-banner" id="bs-banner" style="display:none;"></div>
 
   <div class="edit-add-box" id="edit-add-box" style="display:none;">
     <div class="eab-title" id="eab-title">➕ Add item to this outlet</div>
@@ -557,7 +567,8 @@ si: {
   btnOrder:'🛒 Quick Order', ordTitle:'Quick Order', ordAddTitle:'➕ Order එකට item එකක්',
   ordCount:'Order එකේ items {}ක්', ordEmpty:'තාම items නැහැ — උඩින් search කරලා add කරන්න',
   ordSubmitted:'✅ Order එක manager ට යැව්වා!', ordManualTitle:'✍ List එකේ නැද්ද? අතින් type කරන්න',
-  editBanner:'✏️ Edit mode — item එකක් ✕ එකෙන් අයින් කරන්න, උඩින් search කරලා add කරන්න. වෙනස්කම් මේ outlet එකට save වෙනවා.', eabTitle:'➕ මේ outlet එකට item එකක් add කරන්න'
+  editBanner:'✏️ Edit mode — item එකක් ✕ එකෙන් අයින් කරන්න, උඩින් search කරලා add කරන්න. වෙනස්කම් මේ outlet එකට save වෙනවා.', eabTitle:'➕ මේ outlet එකට item එකක් add කරන්න',
+  bsBanner:'📦 Back store stock — item එකකට back store එකේ තියෙන ගාණ type කරන්න. ඒක Gravity dashboard එකේ පෙන්නනවා.', bsUnit:'units'
 },
 ta: {
   lblRep:'பிரதிநிதி பெயர்', selectRep:'-- Rep தேர்வு செய்க --', lblStore:'கடை (Store)', selectStore:'-- Store தேர்வு செய்க --',
@@ -600,7 +611,8 @@ ta: {
   btnOrder:'🛒 விரைவு Order', ordTitle:'விரைவு Order', ordAddTitle:'➕ Order-க்கு item சேர்க்க',
   ordCount:'Order-இல் {} items', ordEmpty:'இன்னும் items இல்லை — மேலே search செய்து add செய்யவும்',
   ordSubmitted:'✅ Order manager-க்கு அனுப்பப்பட்டது!', ordManualTitle:'✍ List-இல் இல்லையா? கையால் type செய்யவும்',
-  editBanner:'✏️ Edit mode — item-ஐ ✕ மூலம் நீக்கவும், மேலே search செய்து add செய்யவும். மாற்றங்கள் இந்த outlet-க்கு save ஆகும்.', eabTitle:'➕ இந்த outlet-க்கு item சேர்க்க'
+  editBanner:'✏️ Edit mode — item-ஐ ✕ மூலம் நீக்கவும், மேலே search செய்து add செய்யவும். மாற்றங்கள் இந்த outlet-க்கு save ஆகும்.', eabTitle:'➕ இந்த outlet-க்கு item சேர்க்க',
+  bsBanner:'📦 Back store stock — ஒவ்வொரு item-க்கும் back store-இல் உள்ள எண்ணிக்கையை type செய்யவும். இது Gravity dashboard-இல் காட்டப்படும்.', bsUnit:'units'
 },
 en: {
   lblRep:'Rep Name', selectRep:'-- Select Rep --', lblStore:'Store', selectStore:'-- Select Store --',
@@ -643,7 +655,8 @@ en: {
   btnOrder:'🛒 Quick Order', ordTitle:'Quick Order', ordAddTitle:'➕ Add item to order',
   ordCount:'{} items in order', ordEmpty:'No items yet — search above and add',
   ordSubmitted:'✅ Order sent to manager!', ordManualTitle:'✍ Not in the list? Type it manually',
-  editBanner:'✏️ Edit mode — tap ✕ to remove an item, or search above to add. Changes are saved for this outlet.', eabTitle:'➕ Add an item to this outlet'
+  editBanner:'✏️ Edit mode — tap ✕ to remove an item, or search above to add. Changes are saved for this outlet.', eabTitle:'➕ Add an item to this outlet',
+  bsBanner:'📦 Back store stock — type how many units are in the back store for each item. Shown in the Gravity dashboard.', bsUnit:'units'
 }
 };
 
@@ -1415,6 +1428,9 @@ function updateListSwitch() {
   gb.textContent = 'Gravity (' + gravityItems().length + ')';
   kb.classList.toggle('active', currentList === 'kenko');
   gb.classList.toggle('active', currentList === 'gravity');
+  // 📦 Back Stock button — Gravity list එකේදී විතරක් පෙන්නනවා
+  const bsT = document.getElementById('backstock-toggle');
+  if (bsT) bsT.style.display = (currentList === 'gravity') ? '' : 'none';
 }
 function switchList(which) {
   if (currentList === which) return;
@@ -1425,6 +1441,11 @@ function switchList(which) {
     const tgl = document.getElementById('edit-list-toggle'); if (tgl) tgl.classList.remove('active');
     document.getElementById('edit-mode-banner').style.display = 'none';
     document.getElementById('edit-add-box').style.display = 'none';
+  }
+  if (backstockMode) {
+    backstockMode = false;
+    const bt = document.getElementById('backstock-toggle'); if (bt) bt.classList.remove('active');
+    const bb = document.getElementById('bs-banner'); if (bb) bb.style.display = 'none';
   }
   searchTerm = ''; uncheckedOnly = false;
   const si = document.getElementById('item-search'); if (si) si.value = '';
@@ -1438,6 +1459,8 @@ let openExpiry = new Set(); // ⏰ panel open තියෙන item codes
 let searchTerm = '';
 let uncheckedOnly = false;
 let editMode = false;  // checklist එකේ item edit mode
+let backstockMode = false;    // Gravity back-store stock entry mode
+let gravityBackstock = {};    // { code: qty } — Gravity items වල back store stock
 
 // Stores (localStorage) — v3: outlet names only, location වෙනම type කරනවා
 const OLD_DEFAULTS = ['Spar Kalubovila','Spar Thalawathugoda','Spar Pepilitana','Healthguard Pharmacy','Jeewaka Pharmacy','Kandy','CFC','Ovita','Park Street','Uptown','NW','Shade','Mawella','Diligez'];
@@ -1525,10 +1548,14 @@ function startVisit() {
   searchTerm = '';
   uncheckedOnly = false;
   editMode = false;
+  backstockMode = false;
+  gravityBackstock = {};
   currentList = 'kenko';
   const et = document.getElementById('edit-list-toggle'); if (et) et.classList.remove('active');
   const eb = document.getElementById('edit-mode-banner'); if (eb) eb.style.display = 'none';
   const eab = document.getElementById('edit-add-box'); if (eab) eab.style.display = 'none';
+  const bt0 = document.getElementById('backstock-toggle'); if (bt0) bt0.classList.remove('active');
+  const bb0 = document.getElementById('bs-banner'); if (bb0) bb0.style.display = 'none';
   const si = document.getElementById('item-search'); if (si) si.value = '';
   const fb = document.getElementById('filter-unchecked'); if (fb) { fb.classList.remove('active'); fb.textContent = t('filterOff'); }
   document.getElementById('scan-previews').innerHTML = '';
@@ -1593,6 +1620,19 @@ function renderChecklist() {
           <div class="item-name">${p.name}${isRepAdded ? `<span class="cl-badge-added">${t('leAdded')}</span>` : ''}</div>
         </div>
         <button class="cl-rm" onclick="clRemoveItem('${p.code}')" title="${t('remove')}">✕</button>
+      </div>`;
+    }
+    if (backstockMode && currentList === 'gravity') {
+      // back store stock — qty input එක විතරක්
+      const bs = gravityBackstock[p.code];
+      return `<div class="item-row">
+        <div style="flex:1;min-width:0;">
+          <div class="item-name">${p.name}${(bs !== undefined && bs !== '') ? `<span class="bs-has">📦 ${bs}</span>` : ''}</div>
+        </div>
+        <div class="bs-row">
+          <input type="tel" inputmode="numeric" class="bs-input" value="${bs !== undefined ? bs : ''}" placeholder="0" oninput="setBackstock('${p.code}', this.value)">
+          <span class="bs-unit">${t('bsUnit')}</span>
+        </div>
       </div>`;
     }
     return `<div class="item-row ${rowCls}">
@@ -1838,6 +1878,11 @@ function markRestOk() {
 // ===== IN-VISIT LIST EDIT (edit mode) =====
 function toggleEditMode() {
   editMode = !editMode;
+  if (editMode && backstockMode) {
+    backstockMode = false;
+    const bt = document.getElementById('backstock-toggle'); if (bt) bt.classList.remove('active');
+    const bb = document.getElementById('bs-banner'); if (bb) bb.style.display = 'none';
+  }
   const tgl = document.getElementById('edit-list-toggle');
   const banner = document.getElementById('edit-mode-banner');
   const addBox = document.getElementById('edit-add-box');
@@ -1853,6 +1898,33 @@ function toggleEditMode() {
     document.getElementById('cl-manual-wrap').style.display = 'none';
   }
   renderChecklist();
+}
+
+// ===== GRAVITY BACK STORE STOCK =====
+function toggleBackstock() {
+  backstockMode = !backstockMode;
+  // edit mode එකත් එක්ක එකවර on වෙන්නේ නැහැ
+  if (backstockMode && editMode) {
+    editMode = false;
+    const et = document.getElementById('edit-list-toggle'); if (et) et.classList.remove('active');
+    document.getElementById('edit-mode-banner').style.display = 'none';
+    document.getElementById('edit-add-box').style.display = 'none';
+  }
+  const tgl = document.getElementById('backstock-toggle');
+  const banner = document.getElementById('bs-banner');
+  tgl.classList.toggle('active', backstockMode);
+  banner.style.display = backstockMode ? 'block' : 'none';
+  if (backstockMode) banner.textContent = t('bsBanner');
+  document.getElementById('bulk-ok-btn').style.display = 'none';
+  renderChecklist();
+}
+
+function setBackstock(code, val) {
+  const n = parseInt(val, 10);
+  if (val === '' || isNaN(n) || n <= 0) { delete gravityBackstock[code]; }
+  else { gravityBackstock[code] = n; }
+  // input focus නැති නොවෙන්න — re-render නැහැ, badge විතරක් update
+  saveDraft();
 }
 
 // active list refresh — statuses/qty නැති නොවී update list එක ගන්නවා (lists දෙකම සලකනවා)
@@ -2136,6 +2208,12 @@ function buildReport() {
       });
       r += '\n';
     }
+    const gbs = gItems.filter(p => (gravityBackstock[p.code] || 0) > 0);
+    if (gbs.length) {
+      r += `📦 BACK STORE STOCK (${gbs.length}):\n`;
+      gbs.forEach(p => r += `  • ${p.name} — ${gravityBackstock[p.code]}\n`);
+      r += '\n';
+    }
   }
 
   r += `━━━━━━━━━━━━━━━━━━━━\n`;
@@ -2163,11 +2241,15 @@ async function buildPayload() {
   const gexp = gItems
     .map(p => ({ code: p.code, name: p.name, dates: getItemExpiry(p.code).map(x => x.date), entries: getItemExpiry(p.code) }))
     .filter(e => e.entries.length);
-  const gravityData = (gok.length || glow.length || gmiss.length || gexp.length) ? {
+  const gbackstock = gItems
+    .filter(p => (gravityBackstock[p.code] || 0) > 0)
+    .map(p => ({ code: p.code, name: p.name, qty: gravityBackstock[p.code] }));
+  const gravityData = (gok.length || glow.length || gmiss.length || gexp.length || gbackstock.length) ? {
     ok: [...gok.map(withQty), ...glow.map(p => ({ ...withQty(p), name: p.name + ' (LOW STOCK)' }))],
     low: glow.map(withQty),
     missing: gmiss,
-    expiry: gexp
+    expiry: gexp,
+    backstock: gbackstock
   } : null;
 
   // manager dashboard එකට compatible format එක (sections වැනි)
@@ -2286,6 +2368,7 @@ function saveDraft() {
     start: visitStart.toISOString(),
     status: itemStatus,
     qty: itemQty,
+    gbackstock: gravityBackstock,
     notes: document.getElementById('visit-notes').value,
     comp: document.getElementById('visit-competitor').value,
     ts: Date.now()
@@ -2328,11 +2411,13 @@ function restoreDraft() {
   visitItems = getStoreItems(d.storeBase);
   itemStatus = d.status || {};
   itemQty = d.qty || {};
+  gravityBackstock = d.gbackstock || {};
   openExpiry = new Set();
   scanFiles = [];
   searchTerm = '';
   uncheckedOnly = false;
   editMode = false;
+  backstockMode = false;
   currentList = 'kenko';
   const et = document.getElementById('edit-list-toggle'); if (et) et.classList.remove('active');
   const eb = document.getElementById('edit-mode-banner'); if (eb) eb.style.display = 'none';

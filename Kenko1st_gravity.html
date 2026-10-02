@@ -82,6 +82,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .exp-list .ml-title { font-size: 11px; color: #ef6c00; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
 .exp-list .ml-item { font-size: 12px; color: #555; padding: 2px 0; }
 .exp-list .ml-item .exp-dt { color: #ef6c00; font-weight: 600; }
+.bs-list { margin-top: 8px; padding: 10px; background: #eaf4fb; border-radius: 8px; }
+.bs-list .ml-title { font-size: 11px; color: #1f7bb6; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.bs-list .ml-item { font-size: 12px; color: #555; padding: 2px 0; display: flex; justify-content: space-between; }
+.bs-list .ml-item .bs-q { color: #1f7bb6; font-weight: 700; }
+.avail-qty.bs { color: #1f7bb6; }
 
 .loading { text-align: center; padding: 60px; color: #889; }
 .spinner { width: 40px; height: 40px; border: 3px solid #d6ebf7; border-top-color: #1193d4; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
@@ -92,6 +97,31 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .empty .wm-text { font-size: 15px; color: #9fb3c0; }
 .err { background: #ffebee; border: 1px solid #ffcdd2; color: #c62828; padding: 14px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; display: none; }
 .last-updated { font-size: 12px; color: #abb; text-align: right; margin-bottom: 16px; }
+.export-panel { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 22px; }
+.export-panel h3 { font-size: 14px; font-weight: 700; color: #1f7bb6; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.export-panel .sub { font-size: 12px; color: #aaa; margin-bottom: 16px; }
+.exp-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.exp-controls input[type=date], .exp-controls select { padding: 9px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: #fff; outline: none; }
+.exp-controls input[type=date]:focus, .exp-controls select:focus { border-color: #1f7bb6; }
+.exp-dl-btn { background: #1f7bb6; color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 14px; }
+.exp-dl-btn:hover { background: #18618f; }
+.exp-dl-btn:disabled { background: #bbb; cursor: not-allowed; }
+.exp-range-lbl { font-size: 13px; color: #666; font-weight: 600; }
+.exp-preview { overflow-x: auto; border: 1px solid #eee; border-radius: 10px; max-height: 420px; }
+.exp-table { border-collapse: collapse; font-size: 12px; width: 100%; white-space: nowrap; }
+.exp-table th, .exp-table td { border: 1px solid #eee; padding: 6px 9px; text-align: center; }
+.exp-table th { background: #eef6fc; font-weight: 700; position: sticky; top: 0; color: #1f5e85; }
+.exp-table td.pname { text-align: left; font-weight: 500; }
+.exp-table td.cell-ok { color: #2e7d32; font-weight: 700; }
+.exp-table td.cell-out { color: #c62828; font-weight: 700; background: #fff5f5; }
+.exp-table td.cell-low { color: #f57f17; font-weight: 700; background: #fff8e1; }
+.exp-table td.cell-na { color: #ccc; }
+.exp-table td.col-back { color: #1f7bb6; font-weight: 700; background: #eef6fc; }
+.exp-table td .cback { color: #1f7bb6; font-weight: 700; font-size: 11px; }
+.exp-empty { font-size: 13px; color: #aaa; padding: 16px 0; }
+.exp-daytabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.exp-daytab { padding: 6px 12px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: #666; font-size: 12px; font-weight: 600; cursor: pointer; }
+.exp-daytab.active { background: #1f7bb6; color: #fff; border-color: #1f7bb6; }
 
 /* Modal */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
@@ -117,6 +147,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .ms-box .n { font-size: 22px; font-weight: 700; }
 .ms-box .l { font-size: 11px; color: #889; margin-top: 2px; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="topbar">
@@ -150,6 +181,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="store-table" id="store-table" style="display:none;">
     <h2>🏪 Latest status by outlet</h2>
     <div id="store-table-body"></div>
+  </div>
+
+  <div class="export-panel" id="export-panel" style="display:none;">
+    <h3>📥 Gravity Stock Sheet (Excel)</h3>
+    <div class="sub">From–To date range + outlet → stock matrix (✓ / LOW / 0). Each cell also shows back-store qty like (5). BACK column = total units in back store.</div>
+    <div class="exp-controls">
+      <span class="exp-range-lbl">From</span>
+      <input type="date" id="exp-date-from">
+      <span class="exp-range-lbl">To</span>
+      <input type="date" id="exp-date-to">
+      <select id="exp-outlet" onchange="renderExportPreview()"></select>
+      <select id="exp-mode" onchange="renderExportPreview()">
+        <option value="daily">📆 Per-day (sheet each day)</option>
+        <option value="combined">📊 Combined range (one sheet)</option>
+      </select>
+      <button class="exp-dl-btn" id="exp-dl" onclick="downloadStockSheet()">⬇ Download Excel</button>
+    </div>
+    <div class="exp-daytabs" id="exp-daytabs"></div>
+    <div class="exp-preview" id="exp-preview"></div>
   </div>
 
   <div class="filters">
@@ -192,7 +242,7 @@ let allVisits = [];
 function gravSec(v) {
   const g = (v.visitData || {}).gravity;
   if (!g) return null;
-  return { ok: g.ok || [], low: g.low || [], missing: g.missing || [], expiry: g.expiry || [] };
+  return { ok: g.ok || [], low: g.low || [], missing: g.missing || [], expiry: g.expiry || [], backstock: g.backstock || [] };
 }
 // "available" = ok වලින් (LOW STOCK) tag නැති ඒවා
 function availItems(sec) { return (sec.ok || []).filter(p => !/\(LOW STOCK\)$/.test(p.name)); }
@@ -222,6 +272,7 @@ async function loadVisits() {
     renderAttention();
     renderStoreTable();
     renderVisits();
+    setupExport();
     document.getElementById('last-updated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
     document.getElementById('date-lbl').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   } catch (e) {
@@ -360,6 +411,8 @@ function renderVisits() {
     const missingHTML = miss.length ? `<div class="missing-list"><div class="ml-title">🔴 Missing (${miss.length})</div>${miss.map(p => `<div class="ml-item">${p.name}</div>`).join('')}</div>` : '';
     const lowHTML = low.length ? `<div class="low-list"><div class="ml-title">🟡 Low Stock (${low.length})</div>${low.map(p => `<div class="ml-item">${p.name}${p.qty ? ' ×' + p.qty : ''}</div>`).join('')}</div>` : '';
     const expHTML = exp.length ? `<div class="exp-list"><div class="ml-title">⏰ Expiry (${exp.length})</div>${exp.map(e => `<div class="ml-item">${e.name} — <span class="exp-dt">${(e.dates || []).map(fmtD).join(', ')}</span></div>`).join('')}</div>` : '';
+    const bstock = sec.backstock || [];
+    const bsHTML = bstock.length ? `<div class="bs-list"><div class="ml-title">📦 Back Store (${bstock.length})</div>${bstock.map(p => `<div class="ml-item"><span>${p.name}</span><span class="bs-q">${p.qty}</span></div>`).join('')}</div>` : '';
 
     const cardCls = miss.length ? 'has-missing' : (low.length ? 'has-low' : 'all-ok');
     const badge = miss.length
@@ -374,7 +427,7 @@ function renderVisits() {
         </div>
         ${badge}
       </div>
-      <div>${summaryHTML}${missingHTML}${lowHTML}${expHTML}</div>
+      <div>${summaryHTML}${missingHTML}${lowHTML}${expHTML}${bsHTML}</div>
     </div>`;
   }).join('');
 }
@@ -408,6 +461,11 @@ function openModal(v) {
     body += `<div class="avail-section"><h3>⏰ Expiry Dates (${exp.length})</h3>` +
       exp.map(e => `<div class="avail-row"><span class="avail-name">${e.name}</span><span class="avail-status status-low">${(e.dates || []).map(fmtD).join(', ')}</span></div>`).join('') + `</div>`;
   }
+  const bstock = sec.backstock || [];
+  if (bstock.length) {
+    body += `<div class="avail-section"><h3>📦 Back Store Stock (${bstock.length})</h3>` +
+      bstock.map(p => `<div class="avail-row"><span class="avail-name">${p.name}</span><span class="avail-qty bs">${p.qty} units</span></div>`).join('') + `</div>`;
+  }
   document.getElementById('modal-body').innerHTML = body;
   document.getElementById('modal-overlay').classList.add('open');
 }
@@ -416,6 +474,234 @@ function closeModal(e) {
   if (e.target === document.getElementById('modal-overlay')) {
     document.getElementById('modal-overlay').classList.remove('open');
   }
+}
+
+// ===================== GRAVITY STOCK SHEET (EXCEL) =====================
+function ymd(dateObj) {
+  const d = new Date(dateObj);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function baseOutlet(store) { return (store || '').split(' - ')[0].trim(); }
+function locShort(store, base) {
+  if (!base) return store;
+  const s = (store || '').replace(base, '').replace(/^\s*-\s*/, '').trim();
+  return s || base;
+}
+function dd_mm(dateStr) { const [y,m,d] = dateStr.split('-'); return d + '/' + m; }
+function fmtDayTab(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+}
+
+function setupExport() {
+  const panel = document.getElementById('export-panel');
+  if (!allVisits.length) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  const fromInp = document.getElementById('exp-date-from');
+  const toInp = document.getElementById('exp-date-to');
+  const latest = allVisits.reduce((a, v) => new Date(v.savedAt) > new Date(a) ? v.savedAt : a, allVisits[0].savedAt);
+  if (!toInp.value) toInp.value = ymd(latest);
+  if (!fromInp.value) { const wk = new Date(latest); wk.setDate(wk.getDate() - 6); fromInp.value = ymd(wk); }
+  fromInp.onchange = () => { if (fromInp.value > toInp.value) toInp.value = fromInp.value; populateExportOutlets(); renderExportPreview(); };
+  toInp.onchange = () => { if (toInp.value < fromInp.value) fromInp.value = toInp.value; populateExportOutlets(); renderExportPreview(); };
+  populateExportOutlets();
+  renderExportPreview();
+}
+
+function populateExportOutlets() {
+  const sel = document.getElementById('exp-outlet');
+  const from = document.getElementById('exp-date-from').value;
+  const to = document.getElementById('exp-date-to').value;
+  const inRange = allVisits.filter(v => { const d = ymd(v.savedAt); return d >= from && d <= to; });
+  const bases = [...new Set(inRange.map(v => baseOutlet(v.store)))].sort();
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">All Outlets</option>' + bases.map(b => `<option value="${b}">${b}</option>`).join('');
+  if (prev !== null && (prev === '' || bases.includes(prev))) sel.value = prev;
+}
+
+function datesInRange(base) {
+  const from = document.getElementById('exp-date-from').value;
+  const to = document.getElementById('exp-date-to').value;
+  if (!from || !to) return [];
+  const set = new Set();
+  allVisits.forEach(v => {
+    const d = ymd(v.savedAt);
+    if (d >= from && d <= to && (!base || baseOutlet(v.store) === base)) set.add(d);
+  });
+  return [...set].sort();
+}
+function visitsOnDate(dateStr) { return allVisits.filter(v => ymd(v.savedAt) === dateStr); }
+
+// per-day matrix
+function buildStockMatrix(dateStr, base) {
+  const visits = visitsOnDate(dateStr).filter(v => !base || baseOutlet(v.store) === base);
+  if (!visits.length) return null;
+  const latestPerLoc = {};
+  visits.forEach(v => { if (!latestPerLoc[v.store] || new Date(v.savedAt) > new Date(latestPerLoc[v.store].savedAt)) latestPerLoc[v.store] = v; });
+  const locStores = Object.keys(latestPerLoc).sort();
+  const locations = locStores.map(s => locShort(s, base));
+  const items = {};
+  function reg(p, loc, status) {
+    const nm = p.name.replace(' (LOW STOCK)', '');
+    if (!items[p.code]) items[p.code] = { code: p.code, name: nm, perLoc: {}, backLoc: {} };
+    items[p.code].perLoc[loc] = status;
+  }
+  function regBack(p, loc, qty) {
+    const nm = p.name.replace(' (LOW STOCK)', '');
+    if (!items[p.code]) items[p.code] = { code: p.code, name: nm, perLoc: {}, backLoc: {} };
+    items[p.code].backLoc[loc] = qty;
+  }
+  locStores.forEach(store => {
+    const loc = locShort(store, base);
+    const sec = gravSec(latestPerLoc[store]); if (!sec) return;
+    availItems(sec).forEach(p => reg(p, loc, 'ok'));
+    (sec.low || []).forEach(p => reg(p, loc, 'low'));
+    (sec.missing || []).forEach(p => reg(p, loc, 'out'));
+    (sec.backstock || []).forEach(p => regBack(p, loc, p.qty));
+  });
+  return finishMatrix(items, locations);
+}
+
+// combined matrix — column per visit
+function buildCombinedMatrix(base) {
+  const from = document.getElementById('exp-date-from').value;
+  const to = document.getElementById('exp-date-to').value;
+  const visits = allVisits.filter(v => { const d = ymd(v.savedAt); return d >= from && d <= to && (!base || baseOutlet(v.store) === base); });
+  if (!visits.length) return null;
+  visits.sort((a, b) => { const la = locShort(a.store, base), lb = locShort(b.store, base); return la.localeCompare(lb) || new Date(a.savedAt) - new Date(b.savedAt); });
+  const seen = {}; const cols = [];
+  visits.forEach(v => {
+    const loc = locShort(v.store, base); const dstr = ymd(v.savedAt); const key = loc + '|' + dstr;
+    if (seen[key]) { if (new Date(v.savedAt) > new Date(seen[key].v.savedAt)) seen[key].v = v; return; }
+    const col = { key, loc, date: dstr, label: `${loc} (${dd_mm(dstr)})`, v };
+    seen[key] = col; cols.push(col);
+  });
+  const items = {};
+  function reg(p, colKey, status) {
+    const nm = p.name.replace(' (LOW STOCK)', '');
+    if (!items[p.code]) items[p.code] = { code: p.code, name: nm, perLoc: {}, backLoc: {} };
+    items[p.code].perLoc[colKey] = status;
+  }
+  function regBack(p, colKey, qty) {
+    const nm = p.name.replace(' (LOW STOCK)', '');
+    if (!items[p.code]) items[p.code] = { code: p.code, name: nm, perLoc: {}, backLoc: {} };
+    items[p.code].backLoc[colKey] = qty;
+  }
+  cols.forEach(col => {
+    const sec = gravSec(col.v); if (!sec) return;
+    availItems(sec).forEach(p => reg(p, col.key, 'ok'));
+    (sec.low || []).forEach(p => reg(p, col.key, 'low'));
+    (sec.missing || []).forEach(p => reg(p, col.key, 'out'));
+    (sec.backstock || []).forEach(p => regBack(p, col.key, p.qty));
+  });
+  const colLabels = cols.map(c => c.label);
+  const colKeys = cols.map(c => c.key);
+  return finishMatrix(items, colLabels, colKeys);
+}
+
+// shared: build rows with out/low/back totals. keys optional (combined uses colKeys mapped to labels)
+function finishMatrix(items, labels, keys) {
+  const useKeys = keys || labels;
+  const rows = Object.values(items).map(it => {
+    let out = 0, low = 0, back = 0;
+    const cells = {}, backCells = {};
+    useKeys.forEach((k, i) => {
+      const lbl = labels[i];
+      const st = it.perLoc[k] || '';
+      cells[lbl] = st;
+      if (st === 'out') out++;
+      if (st === 'low') low++;
+      const b = it.backLoc[k];
+      if (b !== undefined && b !== null) { backCells[lbl] = b; back += Number(b) || 0; }
+    });
+    return { code: it.code, name: it.name, cells, backCells, out, low, back };
+  });
+  rows.sort((a, b) => b.out - a.out || b.low - a.low || b.back - a.back || a.name.localeCompare(b.name));
+  return { locations: labels, rows };
+}
+
+let expPreviewDay = '';
+function cellText(st, back, naSym) {
+  const sym = { ok: '✓', out: '0', low: 'LOW', '': (naSym || '') };
+  let t = sym[st] || '';
+  if (back !== undefined && back !== null && back !== '') t += (t ? ' ' : '') + '(' + back + ')';
+  return t;
+}
+
+function renderExportPreview() {
+  const base = document.getElementById('exp-outlet').value;
+  const mode = document.getElementById('exp-mode').value;
+  const box = document.getElementById('exp-preview');
+  const tabsEl = document.getElementById('exp-daytabs');
+  const dl = document.getElementById('exp-dl');
+  const days = datesInRange(base);
+  if (!days.length) { tabsEl.innerHTML = ''; box.innerHTML = '<div class="exp-empty">No Gravity visits in that range</div>'; dl.disabled = true; return; }
+  dl.disabled = false;
+  let m;
+  if (mode === 'combined') {
+    tabsEl.innerHTML = `<span style="font-size:12px;color:#888;align-self:center;">📊 ${days.length} days combined · one column = one visit (${fmtDayTab(days[0])} → ${fmtDayTab(days[days.length-1])})</span>`;
+    m = buildCombinedMatrix(base);
+  } else {
+    if (!days.includes(expPreviewDay)) expPreviewDay = days[days.length - 1];
+    tabsEl.innerHTML = days.map(d => `<button class="exp-daytab ${d === expPreviewDay ? 'active' : ''}" onclick="expPreviewDay='${d}'; renderExportPreview();">${fmtDayTab(d)}</button>`).join('') + (days.length > 1 ? `<span style="font-size:12px;color:#aaa;align-self:center;margin-left:6px;">${days.length} days → ${days.length} sheets</span>` : '');
+    m = buildStockMatrix(expPreviewDay, base);
+  }
+  if (!m || !m.rows.length) { box.innerHTML = '<div class="exp-empty">No data</div>'; return; }
+  const cls = { ok: 'cell-ok', out: 'cell-out', low: 'cell-low', '': 'cell-na' };
+  let html = '<table class="exp-table"><thead><tr><th>#</th><th>Code</th><th>Product</th>';
+  m.locations.forEach(l => html += `<th>${l}</th>`);
+  html += '<th>OUT</th><th>LOW</th><th>BACK</th></tr></thead><tbody>';
+  m.rows.forEach((r, i) => {
+    html += `<tr><td>${i+1}</td><td>${r.code}</td><td class="pname">${r.name}</td>`;
+    m.locations.forEach(l => { const st = r.cells[l] || ''; html += `<td class="${cls[st]}">${cellText(st, r.backCells[l], '–')}</td>`; });
+    html += `<td class="cell-out">${r.out || ''}</td><td class="cell-low">${r.low || ''}</td><td class="col-back">${r.back || ''}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  box.innerHTML = html;
+}
+
+function sheetFromMatrix(m) {
+  const header = ['#', 'Code', 'Product', ...m.locations, 'OUT', 'LOW', 'BACK'];
+  const aoa = [header];
+  m.rows.forEach((r, i) => {
+    aoa.push([i+1, r.code, r.name, ...m.locations.map(l => cellText(r.cells[l] || '', r.backCells[l], '')), r.out || 0, r.low || 0, r.back || 0]);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{ wch: 4 }, { wch: 10 }, { wch: 40 }, ...m.locations.map(() => ({ wch: 14 })), { wch: 6 }, { wch: 6 }, { wch: 6 }];
+  ws['!freeze'] = { xSplit: 3, ySplit: 1 };
+  return ws;
+}
+
+function downloadStockSheet() {
+  const base = document.getElementById('exp-outlet').value;
+  const mode = document.getElementById('exp-mode').value;
+  const days = datesInRange(base);
+  if (!days.length) return;
+  const wb = XLSX.utils.book_new();
+  const from = days[0].replace(/-/g,'_').slice(5);
+  const to = days[days.length-1].replace(/-/g,'_').slice(5);
+  const tag = base ? base.replace(/\s+/g,'_') : 'AllOutlets';
+  if (mode === 'combined') {
+    const m = buildCombinedMatrix(base);
+    if (!m || !m.rows.length) return;
+    const name = days.length === 1 ? days[0].slice(5).replace('-', ' ') : 'Combined';
+    XLSX.utils.book_append_sheet(wb, sheetFromMatrix(m), name);
+    const fname = days.length === 1 ? `Gravity_${tag}_Stock_${from}.xlsx` : `Gravity_${tag}_Stock_${from}_to_${to}_combined.xlsx`;
+    XLSX.writeFile(wb, fname);
+    return;
+  }
+  let added = 0;
+  days.forEach(dateStr => {
+    const m = buildStockMatrix(dateStr, base);
+    if (!m || !m.rows.length) return;
+    let name = dateStr.slice(5).replace('-', ' ');
+    if (wb.SheetNames.includes(name)) name = dateStr.replace(/-/g, ' ');
+    XLSX.utils.book_append_sheet(wb, sheetFromMatrix(m), name);
+    added++;
+  });
+  if (!added) return;
+  const fname = days.length === 1 ? `Gravity_${tag}_Stock_${from}.xlsx` : `Gravity_${tag}_Stock_${from}_to_${to}.xlsx`;
+  XLSX.writeFile(wb, fname);
 }
 
 document.getElementById('brand-logo').src = LOGO;
