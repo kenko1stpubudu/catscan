@@ -97,6 +97,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .empty .wm-text { font-size: 15px; color: #9fb3c0; }
 .err { background: #ffebee; border: 1px solid #ffcdd2; color: #c62828; padding: 14px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; display: none; }
 .last-updated { font-size: 12px; color: #abb; text-align: right; margin-bottom: 16px; }
+.reports-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+.report-btn { background: #fff; border: 1px solid #d8e6f2; border-radius: 10px; padding: 11px 16px; font-size: 13px; font-weight: 700; color: #1f5e85; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 7px; }
+.report-btn:hover { border-color: #3ec8f4; background: #f2fbff; }
+.rep-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rep-table th, .rep-table td { padding: 9px 10px; text-align: left; border-bottom: 1px solid #f0f2f4; }
+.rep-table th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #889; font-weight: 700; }
+.rep-table td.num { text-align: center; font-weight: 700; }
+.rep-rate { font-weight: 800; padding: 3px 10px; border-radius: 12px; font-size: 12px; }
+.rate-hi { background: #e8f5e9; color: #2e7d32; }
+.rate-mid { background: #fff8e1; color: #f57f17; }
+.rate-lo { background: #ffebee; color: #c62828; }
+.rep-badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 10px; white-space: nowrap; }
+.rb-over { background: #ffebee; color: #c62828; }
+.rb-ok { background: #e8f5e9; color: #2e7d32; }
+.rb-warn { background: #fff8e1; color: #f57f17; }
+.rb-miss { background: #ffebee; color: #c62828; }
+.rb-low { background: #fff8e1; color: #f57f17; }
+.rep-sub { font-size: 12px; color: #889; margin-bottom: 14px; }
+.rep-empty { font-size: 13px; color: #43a047; padding: 10px 0; }
 .clear-btn { background: #fff; border: 1px solid #ffcdd2; color: #e53935; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; margin-top: 10px; }
 .clear-btn:hover { background: #ffebee; }
 .clear-btn.modal-clear { width: 100%; padding: 11px; margin-top: 6px; }
@@ -187,6 +206,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <h2>📊 Items needing attention</h2>
     <div class="hint">Based on the latest check at each outlet — where your items are currently missing or low.</div>
     <div id="attn-body"></div>
+  </div>
+
+  <div class="reports-toolbar" id="reports-toolbar" style="display:none;">
+    <button class="report-btn" onclick="reportScorecard()">🏆 Outlet Scorecard</button>
+    <button class="report-btn" onclick="reportCoverage()">🗺️ Visit Coverage</button>
+    <button class="report-btn" onclick="reportTrends()">📈 Problem Items</button>
+    <button class="report-btn" onclick="reportBackStore()">📦 Back Store</button>
   </div>
 
   <div class="store-table" id="store-table" style="display:none;">
@@ -283,6 +309,7 @@ async function loadVisits() {
     populateStoreFilter();
     renderSummary();
     renderAttention();
+    document.getElementById('reports-toolbar').style.display = allVisits.length ? 'flex' : 'none';
     renderStoreTable();
     renderVisits();
     setupExport();
@@ -811,6 +838,105 @@ async function clearGravityVisit(v) {
 }
 
 if (ADMIN) { const ab = document.getElementById('admin-banner'); if (ab) ab.style.display = 'block'; }
+// ===== REPORT MODALS (reuse the visit modal) =====
+function openReport(title, bodyHtml) {
+  document.getElementById('modal-store').textContent = title;
+  document.getElementById('modal-meta').textContent = '';
+  document.getElementById('modal-body').innerHTML = bodyHtml;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function daysSinceISO(iso) { return Math.floor((Date.now() - new Date(iso)) / 86400000); }
+
+// 🏆 Outlet Scorecard — Gravity fill rate % per outlet
+function reportScorecard() {
+  const m = latestPerStore();
+  const rows = Object.entries(m).map(([store, v]) => {
+    const sec = gravSec(v); if (!sec) return null;
+    const present = availItems(sec).length + (sec.low || []).length;
+    const miss = (sec.missing || []).length;
+    const checked = present + miss;
+    return { store, present, miss, checked, rate: checked ? Math.round(present / checked * 100) : null };
+  }).filter(r => r && r.checked > 0).sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1));
+  let html = '<div class="rep-sub">How well each outlet keeps Gravity stock on shelf, from the latest visit. Fill rate = on-shelf ÷ items checked.</div>';
+  if (!rows.length) { openReport('🏆 Outlet Scorecard', html + '<div class="rep-empty">No data yet.</div>'); return; }
+  html += '<table class="rep-table"><thead><tr><th>Outlet</th><th class="num">Fill rate</th><th class="num">On shelf</th><th class="num">Missing</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    const cls = r.rate >= 90 ? 'rate-hi' : (r.rate >= 70 ? 'rate-mid' : 'rate-lo');
+    html += `<tr><td>🏪 ${r.store}</td><td class="num"><span class="rep-rate ${cls}">${r.rate}%</span></td><td class="num">${r.present}/${r.checked}</td><td class="num" style="color:${r.miss?'#c62828':'#aaa'}">${r.miss || '–'}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  openReport('🏆 Outlet Scorecard', html);
+}
+
+// 🗺️ Visit Coverage
+function reportCoverage() {
+  const m = latestPerStore();
+  const rows = Object.entries(m).map(([store, v]) => ({ store, date: v.savedAt, days: daysSinceISO(v.savedAt) })).sort((a, b) => b.days - a.days);
+  const overdue = rows.filter(r => r.days >= 7).length;
+  let html = `<div class="rep-sub">Last Gravity check at each outlet. Outlets not visited in 7+ days are flagged. ${overdue ? `<b style="color:#c62828">${overdue} overdue.</b>` : 'All up to date. ✅'}</div>`;
+  if (!rows.length) { openReport('🗺️ Visit Coverage', html + '<div class="rep-empty">No data yet.</div>'); return; }
+  html += '<table class="rep-table"><thead><tr><th>Outlet</th><th>Last visit</th><th class="num">Status</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    const d = new Date(r.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    let badge, cls;
+    if (r.days >= 14) { badge = `${r.days}d ago`; cls = 'rb-over'; }
+    else if (r.days >= 7) { badge = `${r.days}d ago`; cls = 'rb-warn'; }
+    else { badge = r.days === 0 ? 'Today' : `${r.days}d ago`; cls = 'rb-ok'; }
+    html += `<tr><td>🏪 ${r.store}</td><td>${d}</td><td class="num"><span class="rep-badge ${cls}">${badge}</span></td></tr>`;
+  });
+  html += '</tbody></table>';
+  openReport('🗺️ Visit Coverage', html);
+}
+
+// 📈 Problem Items — Gravity items missing/low across outlets
+function reportTrends() {
+  const m = latestPerStore();
+  const agg = {};
+  Object.values(m).forEach(v => {
+    const sec = gravSec(v); if (!sec) return;
+    (sec.missing || []).forEach(p => { const n = (p.name || '').replace(' (LOW STOCK)', ''); (agg[n] = agg[n] || { miss: new Set(), low: new Set() }).miss.add(v.store); });
+    (sec.low || []).forEach(p => { const n = (p.name || '').replace(' (LOW STOCK)', ''); (agg[n] = agg[n] || { miss: new Set(), low: new Set() }).low.add(v.store); });
+  });
+  const rows = Object.entries(agg).map(([name, d]) => ({ name, miss: d.miss.size, low: d.low.size })).filter(r => r.miss + r.low > 0).sort((a, b) => b.miss - a.miss || b.low - a.low);
+  const systemic = rows.filter(r => r.miss >= 2).length;
+  let html = `<div class="rep-sub">Gravity items currently missing or low, and at how many outlets. Items missing at 2+ outlets may be a supply issue. ${systemic ? `<b style="color:#c62828">${systemic} item(s) missing at 2+ outlets.</b>` : ''}</div>`;
+  if (!rows.length) { openReport('📈 Problem Items', html + '<div class="rep-empty">✅ Nothing missing or low right now.</div>'); return; }
+  html += '<table class="rep-table"><thead><tr><th>Item</th><th class="num">Missing at</th><th class="num">Low at</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    html += `<tr><td>${r.name}</td><td class="num" style="color:${r.miss?'#c62828':'#ccc'}">${r.miss ? r.miss + (r.miss>=2?' 🔴':'') : '–'}</td><td class="num" style="color:${r.low?'#f57f17':'#ccc'}">${r.low || '–'}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  openReport('📈 Problem Items', html);
+}
+
+// 📦 Back Store — items in back store, flag those missing/low on shelf (pull forward)
+function reportBackStore() {
+  const m = latestPerStore();
+  const rows = [];
+  Object.values(m).forEach(v => {
+    const sec = gravSec(v); if (!sec) return;
+    const missCodes = new Set((sec.missing || []).map(p => p.code));
+    const lowCodes = new Set((sec.low || []).map(p => p.code));
+    (sec.backstock || []).forEach(p => {
+      let shelf = 'ok', cls = 'rb-ok', label = 'On shelf';
+      if (missCodes.has(p.code)) { shelf = 'miss'; cls = 'rb-miss'; label = 'MISSING on shelf'; }
+      else if (lowCodes.has(p.code)) { shelf = 'low'; cls = 'rb-low'; label = 'LOW on shelf'; }
+      rows.push({ name: p.name, store: v.store, qty: p.qty, shelf, cls, label });
+    });
+  });
+  const order = { miss: 0, low: 1, ok: 2 };
+  rows.sort((a, b) => order[a.shelf] - order[b.shelf]);
+  const pull = rows.filter(r => r.shelf !== 'ok').length;
+  let html = `<div class="rep-sub">Items with stock in the back store. Items marked below are in the back but <b>missing or low on the shelf</b> — pull them forward. ${pull ? `<b style="color:#c62828">${pull} item(s) to pull to shelf.</b>` : 'Nothing needs pulling. ✅'}</div>`;
+  if (!rows.length) { openReport('📦 Back Store', html + '<div class="rep-empty">No back-store quantities recorded yet.</div>'); return; }
+  html += '<table class="rep-table"><thead><tr><th>Item</th><th>Outlet</th><th class="num">In back</th><th class="num">Shelf</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    html += `<tr><td>${r.name}</td><td style="color:#889">🏪 ${r.store}</td><td class="num" style="color:#1f7bb6">${r.qty}</td><td class="num"><span class="rep-badge ${r.cls}">${r.label}</span></td></tr>`;
+  });
+  html += '</tbody></table>';
+  openReport('📦 Back Store', html);
+}
+
 document.getElementById('brand-logo').src = LOGO;
 document.getElementById('palm-wm').src = PALM;
 loadVisits();
