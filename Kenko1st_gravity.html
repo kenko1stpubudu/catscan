@@ -156,6 +156,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .ms-box .l { font-size: 11px; color: #889; margin-top: 2px; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 </head>
 <body>
 <img class="palm-wm" id="palm-wm" alt="">
@@ -687,36 +688,98 @@ function sheetFromMatrix(m) {
   return ws;
 }
 
-function downloadStockSheet() {
+async function downloadStockSheet() {
   const base = document.getElementById('exp-outlet').value;
   const mode = document.getElementById('exp-mode').value;
   const days = datesInRange(base);
   if (!days.length) return;
-  const wb = XLSX.utils.book_new();
-  const from = days[0].replace(/-/g,'_').slice(5);
-  const to = days[days.length-1].replace(/-/g,'_').slice(5);
-  const tag = base ? base.replace(/\s+/g,'_') : 'AllOutlets';
+  if (typeof ExcelJS === 'undefined') { alert('Excel library still loading — please try again in a moment.'); return; }
+
+  const fills = { ok: 'FFE8F5E9', out: 'FFFFEBEE', low: 'FFFFF8E1' };
+  const fonts = { ok: 'FF2E7D32', out: 'FFC62828', low: 'FFF57F17' };
+  const wb = new ExcelJS.Workbook();
+
+  function addSheet(name, m) {
+    const ws = wb.addWorksheet(name, { views: [{ state: 'frozen', xSplit: 3, ySplit: 1 }] });
+    ws.columns = [{ width: 5 }, { width: 12 }, { width: 40 }, ...m.locations.map(() => ({ width: 16 })), { width: 7 }, { width: 7 }, { width: 8 }];
+    const hr = ws.addRow(['#', 'Code', 'Product', ...m.locations, 'OUT', 'LOW', 'BACK']);
+    hr.eachCell(c => {
+      c.font = { bold: true, color: { argb: 'FF1F5E85' } };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FC' } };
+      c.alignment = { horizontal: 'center', vertical: 'middle' };
+      c.border = { bottom: { style: 'thin', color: { argb: 'FFD0D7DE' } } };
+    });
+    m.rows.forEach((r, i) => {
+      const row = ws.addRow([i + 1, r.code, r.name, ...m.locations.map(l => cellText(r.cells[l] || '', r.backCells[l], '')), r.out || '', r.low || '', r.back || '']);
+      row.getCell(1).alignment = { horizontal: 'center' };
+      m.locations.forEach((l, idx) => {
+        const st = r.cells[l] || '';
+        const cell = row.getCell(4 + idx);
+        cell.alignment = { horizontal: 'center' };
+        if (fills[st]) { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fills[st] } }; cell.font = { bold: true, color: { argb: fonts[st] } }; }
+      });
+      const n = m.locations.length;
+      const outC = row.getCell(4 + n), lowC = row.getCell(5 + n), backC = row.getCell(6 + n);
+      outC.alignment = { horizontal: 'center' }; lowC.alignment = { horizontal: 'center' }; backC.alignment = { horizontal: 'center' };
+      if (r.out) { outC.font = { bold: true, color: { argb: 'FFC62828' } }; }
+      if (r.low) { lowC.font = { bold: true, color: { argb: 'FFF57F17' } }; }
+      if (r.back) { backC.font = { bold: true, color: { argb: 'FF1F7BB6' } }; backC.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEF6FC' } }; }
+    });
+    // ===== per-outlet totals at the bottom (OUT / LOW counts per column) =====
+    const nLoc = m.locations.length;
+    const outCounts = m.locations.map(l => m.rows.filter(r => (r.cells[l] || '') === 'out').length);
+    const lowCounts = m.locations.map(l => m.rows.filter(r => (r.cells[l] || '') === 'low').length);
+    [{ lab: 'OUT', counts: outCounts, fill: 'FFFCE4E4', font: 'FFC62828' },
+     { lab: 'LOW', counts: lowCounts, fill: 'FFFFF3D6', font: 'FFF57F17' }].forEach(f => {
+      const row = ws.addRow(['', '', f.lab, ...f.counts, '', '', '']);
+      const lab = row.getCell(3);
+      lab.alignment = { horizontal: 'right' };
+      lab.font = { bold: true, color: { argb: f.font } };
+      lab.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: f.fill } };
+      lab.border = { top: { style: 'thin', color: { argb: 'FF999999' } } };
+      for (let k = 0; k < nLoc; k++) {
+        const c = row.getCell(4 + k);
+        c.alignment = { horizontal: 'center' };
+        c.font = { bold: true, color: { argb: f.font } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: f.fill } };
+        c.border = { top: { style: 'thin', color: { argb: 'FF999999' } } };
+      }
+    });
+    return ws;
+  }
+
+  const from = days[0].replace(/-/g, '_').slice(5);
+  const to = days[days.length - 1].replace(/-/g, '_').slice(5);
+  const tag = base ? base.replace(/\s+/g, '_') : 'AllOutlets';
+
   if (mode === 'combined') {
     const m = buildCombinedMatrix(base);
     if (!m || !m.rows.length) return;
-    const name = days.length === 1 ? days[0].slice(5).replace('-', ' ') : 'Combined';
-    XLSX.utils.book_append_sheet(wb, sheetFromMatrix(m), name);
-    const fname = days.length === 1 ? `Gravity_${tag}_Stock_${from}.xlsx` : `Gravity_${tag}_Stock_${from}_to_${to}_combined.xlsx`;
-    XLSX.writeFile(wb, fname);
-    return;
+    addSheet(days.length === 1 ? days[0].slice(5).replace('-', ' ') : 'Combined', m);
+  } else {
+    let added = 0;
+    days.forEach(dateStr => {
+      const m = buildStockMatrix(dateStr, base);
+      if (!m || !m.rows.length) return;
+      let name = dateStr.slice(5).replace('-', ' ');
+      if (wb.worksheets.some(w => w.name === name)) name = dateStr.replace(/-/g, ' ');
+      addSheet(name, m);
+      added++;
+    });
+    if (!added) return;
   }
-  let added = 0;
-  days.forEach(dateStr => {
-    const m = buildStockMatrix(dateStr, base);
-    if (!m || !m.rows.length) return;
-    let name = dateStr.slice(5).replace('-', ' ');
-    if (wb.SheetNames.includes(name)) name = dateStr.replace(/-/g, ' ');
-    XLSX.utils.book_append_sheet(wb, sheetFromMatrix(m), name);
-    added++;
-  });
-  if (!added) return;
-  const fname = days.length === 1 ? `Gravity_${tag}_Stock_${from}.xlsx` : `Gravity_${tag}_Stock_${from}_to_${to}.xlsx`;
-  XLSX.writeFile(wb, fname);
+
+  const fname = (mode === 'combined')
+    ? (days.length === 1 ? 'Gravity_' + tag + '_Stock_' + from + '.xlsx' : 'Gravity_' + tag + '_Stock_' + from + '_to_' + to + '_combined.xlsx')
+    : (days.length === 1 ? 'Gravity_' + tag + '_Stock_' + from + '.xlsx' : 'Gravity_' + tag + '_Stock_' + from + '_to_' + to + '.xlsx');
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 async function clearGravityVisit(v) {

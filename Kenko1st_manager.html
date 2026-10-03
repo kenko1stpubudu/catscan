@@ -13,6 +13,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .topbar span { color: #888; font-size: 13px; }
 .refresh-btn { background: #c8f04c; color: #1a1a1a; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; }
 .backup-btn { background: #1a2b3c; color: #cfe8ff; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; margin-right: 8px; }
+.reports-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+.report-btn { background: #fff; border: 1px solid #e3e8ee; border-radius: 10px; padding: 11px 16px; font-size: 13px; font-weight: 700; color: #334; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 7px; }
+.report-btn:hover { border-color: #c8f04c; background: #fafff0; }
+.rep-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rep-table th, .rep-table td { padding: 9px 10px; text-align: left; border-bottom: 1px solid #f0f2f4; }
+.rep-table th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #889; font-weight: 700; position: sticky; top: 0; background: #fff; }
+.rep-table td.num { text-align: center; font-weight: 700; }
+.rep-rate { font-weight: 800; padding: 3px 10px; border-radius: 12px; font-size: 12px; }
+.rate-hi { background: #e8f5e9; color: #2e7d32; }
+.rate-mid { background: #fff8e1; color: #f57f17; }
+.rate-lo { background: #ffebee; color: #c62828; }
+.rep-badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 10px; white-space: nowrap; }
+.rb-over { background: #ffebee; color: #c62828; }
+.rb-ok { background: #e8f5e9; color: #2e7d32; }
+.rb-warn { background: #fff8e1; color: #f57f17; }
+.rep-sub { font-size: 12px; color: #889; margin-bottom: 14px; }
+.rep-empty { font-size: 13px; color: #43a047; padding: 10px 0; }
 .backup-btn:hover { background: #24384d; }
 .expiry-panel { background: #fff; border-radius: 14px; padding: 18px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; border-left: 4px solid #ef6c00; }
 .expiry-panel h3 { font-size: 14px; font-weight: 700; color: #e65100; margin-bottom: 4px; }
@@ -224,6 +241,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .exp-range-lbl { font-size: 13px; color: #666; font-weight: 600; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 </head>
 <body>
 
@@ -252,6 +270,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="sum-card ok"><div class="num" id="s-fullstock">-</div><div class="lbl">Full Stock Stores</div></div>
     <div class="sum-card"><div class="num" id="s-items">-</div><div class="lbl">Total Missing Items</div></div>
     <div class="sum-card"><div class="num" id="s-low" style="color:#f57f17;">-</div><div class="lbl">Total Low Stock Items</div></div>
+  </div>
+
+  <!-- Reports toolbar (details on demand, keeps dashboard clean) -->
+  <div class="reports-toolbar" id="reports-toolbar" style="display:none;">
+    <button class="report-btn" onclick="reportScorecard()">🏆 Outlet Scorecard</button>
+    <button class="report-btn" onclick="reportCoverage()">🗺️ Visit Coverage</button>
+    <button class="report-btn" onclick="reportTrends()">📈 Problem Items</button>
   </div>
 
   <!-- Expiry Alerts -->
@@ -550,6 +575,83 @@ function downloadBackup() {
   URL.revokeObjectURL(url);
 }
 
+// ===== REPORT MODALS (reuse the visit modal) =====
+function openReport(title, bodyHtml) {
+  document.getElementById('modal-store').textContent = title;
+  document.getElementById('modal-meta').textContent = '';
+  document.getElementById('modal-body').innerHTML = bodyHtml;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function latestPerStore() {
+  const m = {};
+  allVisits.forEach(v => { if (!m[v.store] || new Date(v.savedAt) > new Date(m[v.store].savedAt)) m[v.store] = v; });
+  return m;
+}
+function daysSince(iso) { return Math.floor((Date.now() - new Date(iso)) / 86400000); }
+
+// 🏆 Outlet Scorecard — fill rate % per outlet (latest check)
+function reportScorecard() {
+  const m = latestPerStore();
+  const rows = Object.entries(m).map(([store, v]) => {
+    const sec = getSec(v);
+    const ok = (sec.ok || []).length, low = (sec.low || []).length, miss = (sec.missing || []).length;
+    const checked = ok + low + miss, present = ok + low;
+    return { store, ok, low, miss, checked, present, rate: checked ? Math.round(present / checked * 100) : null, date: v.savedAt };
+  }).filter(r => r.checked > 0).sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1));
+  let html = '<div class="rep-sub">How well each outlet keeps our stock on shelf, from the latest visit. Fill rate = on-shelf ÷ items checked.</div>';
+  if (!rows.length) { openReport('🏆 Outlet Scorecard', html + '<div class="rep-empty">No data yet.</div>'); return; }
+  html += '<table class="rep-table"><thead><tr><th>Outlet</th><th class="num">Fill rate</th><th class="num">On shelf</th><th class="num">Missing</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    const cls = r.rate >= 90 ? 'rate-hi' : (r.rate >= 70 ? 'rate-mid' : 'rate-lo');
+    html += `<tr><td>🏪 ${r.store}</td><td class="num"><span class="rep-rate ${cls}">${r.rate}%</span></td><td class="num">${r.present}/${r.checked}</td><td class="num" style="color:${r.miss?'#c62828':'#aaa'}">${r.miss || '–'}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  openReport('🏆 Outlet Scorecard', html);
+}
+
+// 🗺️ Visit Coverage — last visit + overdue outlets
+function reportCoverage() {
+  const m = latestPerStore();
+  const rows = Object.entries(m).map(([store, v]) => ({ store, date: v.savedAt, days: daysSince(v.savedAt), rep: v.rep || '' }))
+    .sort((a, b) => b.days - a.days);
+  const overdue = rows.filter(r => r.days >= 7).length;
+  let html = `<div class="rep-sub">Last visit to each outlet. Outlets not visited in 7+ days are flagged — plan the next route around these. ${overdue ? `<b style="color:#c62828">${overdue} overdue.</b>` : 'All up to date. ✅'}</div>`;
+  if (!rows.length) { openReport('🗺️ Visit Coverage', html + '<div class="rep-empty">No data yet.</div>'); return; }
+  html += '<table class="rep-table"><thead><tr><th>Outlet</th><th>Last visit</th><th class="num">Status</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    const d = new Date(r.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    let badge, cls;
+    if (r.days >= 14) { badge = `${r.days}d ago`; cls = 'rb-over'; }
+    else if (r.days >= 7) { badge = `${r.days}d ago`; cls = 'rb-warn'; }
+    else { badge = r.days === 0 ? 'Today' : `${r.days}d ago`; cls = 'rb-ok'; }
+    html += `<tr><td>🏪 ${r.store}</td><td>${d}</td><td class="num"><span class="rep-badge ${cls}">${badge}</span></td></tr>`;
+  });
+  html += '</tbody></table>';
+  openReport('🗺️ Visit Coverage', html);
+}
+
+// 📈 Problem Items — items missing/low across multiple outlets (latest check)
+function reportTrends() {
+  const m = latestPerStore();
+  const agg = {};
+  Object.values(m).forEach(v => {
+    const sec = getSec(v);
+    (sec.missing || []).forEach(p => { const n = (p.name || '').replace(' (LOW STOCK)', ''); (agg[n] = agg[n] || { miss: new Set(), low: new Set() }).miss.add(v.store); });
+    (sec.low || []).forEach(p => { const n = (p.name || '').replace(' (LOW STOCK)', ''); (agg[n] = agg[n] || { miss: new Set(), low: new Set() }).low.add(v.store); });
+  });
+  const rows = Object.entries(agg).map(([name, d]) => ({ name, miss: d.miss.size, low: d.low.size }))
+    .filter(r => r.miss + r.low > 0).sort((a, b) => b.miss - a.miss || b.low - a.low);
+  const systemic = rows.filter(r => r.miss >= 2).length;
+  let html = `<div class="rep-sub">Items currently missing or low, and at how many outlets (latest check). Items missing at 2+ outlets may be a supply or ordering issue. ${systemic ? `<b style="color:#c62828">${systemic} item(s) missing at 2+ outlets.</b>` : ''}</div>`;
+  if (!rows.length) { openReport('📈 Problem Items', html + '<div class="rep-empty">✅ Nothing missing or low right now.</div>'); return; }
+  html += '<table class="rep-table"><thead><tr><th>Item</th><th class="num">Missing at</th><th class="num">Low at</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    html += `<tr><td>${r.name}</td><td class="num" style="color:${r.miss?'#c62828':'#ccc'}">${r.miss ? r.miss + (r.miss>=2?' 🔴':'') : '–'}</td><td class="num" style="color:${r.low?'#f57f17':'#ccc'}">${r.low || '–'}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  openReport('📈 Problem Items', html);
+}
+
 function downloadReport(v) {
   const time = new Date(v.savedAt).toLocaleString('en-GB');
   let text = `KENKO1ST AVAILABILITY REPORT\n`;
@@ -613,6 +715,7 @@ async function loadVisits() {
     document.getElementById('main-tabs').style.display = allOrders.length ? 'flex' : 'none';
     populateStoreFilter();
     renderSummary();
+    document.getElementById('reports-toolbar').style.display = allVisits.length ? 'flex' : 'none';
     renderExpiryAlerts();
     renderStoreTable();
     renderAnalysisOutlets();
@@ -809,7 +912,7 @@ function showMainTab(tab) {
   document.getElementById('mt-orders').classList.toggle('active', tab === 'orders');
   // visits-only sections
   const visitsMode = tab === 'visits';
-  ['summary-row','expiry-panel','store-table','export-panel','analysis'].forEach(id => {
+  ['summary-row','reports-toolbar','expiry-panel','store-table','export-panel','analysis'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     if (id === 'summary-row') { el.style.display = visitsMode ? 'grid' : 'none'; return; }
@@ -1112,43 +1215,100 @@ function sheetFromMatrix(m) {
   return ws;
 }
 
-function downloadStockSheet() {
+async function downloadStockSheet() {
   const base = document.getElementById('exp-outlet').value;
   const mode = document.getElementById('exp-mode').value;
   const days = datesInRange(base);
   if (!days.length) return;
+  if (typeof ExcelJS === 'undefined') { alert('Excel library still loading — please try again in a moment.'); return; }
 
-  const wb = XLSX.utils.book_new();
-  const from = days[0].replace(/-/g,'_').slice(5);
-  const to = days[days.length-1].replace(/-/g,'_').slice(5);
+  const sym = { ok: '\u2713', out: '0', low: 'LOW', '': '' };
+  const fills = { ok: 'FFE8F5E9', out: 'FFFFEBEE', low: 'FFFFF8E1' };
+  const fonts = { ok: 'FF2E7D32', out: 'FFC62828', low: 'FFF57F17' };
+  const wb = new ExcelJS.Workbook();
+
+  function addSheet(name, m) {
+    const ws = wb.addWorksheet(name, { views: [{ state: 'frozen', xSplit: 3, ySplit: 1 }] });
+    ws.columns = [{ width: 5 }, { width: 14 }, { width: 38 }, ...m.locations.map(() => ({ width: 15 })), { width: 7 }, { width: 7 }];
+    const hr = ws.addRow(['#', 'Code', 'Product Description', ...m.locations, 'OUT', 'LOW']);
+    hr.eachCell(c => {
+      c.font = { bold: true, color: { argb: 'FF1F5E85' } };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FC' } };
+      c.alignment = { horizontal: 'center', vertical: 'middle' };
+      c.border = { bottom: { style: 'thin', color: { argb: 'FFD0D7DE' } } };
+    });
+    m.rows.forEach((r, i) => {
+      const row = ws.addRow([i + 1, r.code, r.name, ...m.locations.map(l => sym[r.cells[l] || '']), r.out || '', r.low || '']);
+      row.getCell(1).alignment = { horizontal: 'center' };
+      m.locations.forEach((l, idx) => {
+        const st = r.cells[l] || '';
+        const cell = row.getCell(4 + idx);
+        cell.alignment = { horizontal: 'center' };
+        if (fills[st]) {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fills[st] } };
+          cell.font = { bold: true, color: { argb: fonts[st] } };
+        }
+      });
+      const outC = row.getCell(4 + m.locations.length);
+      const lowC = row.getCell(5 + m.locations.length);
+      outC.alignment = { horizontal: 'center' }; lowC.alignment = { horizontal: 'center' };
+      if (r.out) { outC.font = { bold: true, color: { argb: 'FFC62828' } }; outC.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF5F5' } }; }
+      if (r.low) { lowC.font = { bold: true, color: { argb: 'FFF57F17' } }; lowC.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFDF0' } }; }
+    });
+    // ===== per-outlet totals at the bottom (OUT / LOW counts per column) =====
+    const nLoc = m.locations.length;
+    const outCounts = m.locations.map(l => m.rows.filter(r => (r.cells[l] || '') === 'out').length);
+    const lowCounts = m.locations.map(l => m.rows.filter(r => (r.cells[l] || '') === 'low').length);
+    [{ lab: 'OUT', counts: outCounts, fill: 'FFFCE4E4', font: 'FFC62828' },
+     { lab: 'LOW', counts: lowCounts, fill: 'FFFFF3D6', font: 'FFF57F17' }].forEach(f => {
+      const row = ws.addRow(['', '', f.lab, ...f.counts, '', '']);
+      const lab = row.getCell(3);
+      lab.alignment = { horizontal: 'right' };
+      lab.font = { bold: true, color: { argb: f.font } };
+      lab.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: f.fill } };
+      lab.border = { top: { style: 'thin', color: { argb: 'FF999999' } } };
+      for (let k = 0; k < nLoc; k++) {
+        const c = row.getCell(4 + k);
+        c.alignment = { horizontal: 'center' };
+        c.font = { bold: true, color: { argb: f.font } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: f.fill } };
+        c.border = { top: { style: 'thin', color: { argb: 'FF999999' } } };
+      }
+    });
+    return ws;
+  }
 
   if (mode === 'combined') {
     const m = buildCombinedMatrix(base);
     if (!m || !m.rows.length) return;
-    const name = days.length === 1 ? days[0].slice(5).replace('-', ' ') : 'Combined';
-    XLSX.utils.book_append_sheet(wb, sheetFromMatrix(m), name);
-    const fname = days.length === 1
-      ? `${base.replace(/\s+/g,'_')}_Stock_${from}.xlsx`
-      : `${base.replace(/\s+/g,'_')}_Stock_${from}_to_${to}_combined.xlsx`;
-    XLSX.writeFile(wb, fname);
-    return;
+    addSheet(days.length === 1 ? days[0].slice(5).replace('-', ' ') : 'Combined', m);
+  } else {
+    let added = 0;
+    days.forEach(dateStr => {
+      const m = buildStockMatrix(dateStr, base);
+      if (!m || !m.rows.length) return;
+      let name = dateStr.slice(5).replace('-', ' ');
+      if (wb.worksheets.some(w => w.name === name)) name = dateStr.replace(/-/g, ' ');
+      addSheet(name, m);
+      added++;
+    });
+    if (!added) return;
   }
 
-  // per-day: sheet each day
-  let added = 0;
-  days.forEach(dateStr => {
-    const m = buildStockMatrix(dateStr, base);
-    if (!m || !m.rows.length) return;
-    let name = dateStr.slice(5).replace('-', ' ');
-    if (wb.SheetNames.includes(name)) name = dateStr.replace(/-/g, ' ');
-    XLSX.utils.book_append_sheet(wb, sheetFromMatrix(m), name);
-    added++;
-  });
-  if (!added) return;
-  const fname = days.length === 1
-    ? `${base.replace(/\s+/g,'_')}_Stock_${from}.xlsx`
-    : `${base.replace(/\s+/g,'_')}_Stock_${from}_to_${to}.xlsx`;
-  XLSX.writeFile(wb, fname);
+  const from = days[0].replace(/-/g, '_').slice(5);
+  const to = days[days.length - 1].replace(/-/g, '_').slice(5);
+  const tag = base.replace(/\s+/g, '_');
+  const fname = (mode === 'combined')
+    ? (days.length === 1 ? tag + '_Stock_' + from + '.xlsx' : tag + '_Stock_' + from + '_to_' + to + '_combined.xlsx')
+    : (days.length === 1 ? tag + '_Stock_' + from + '.xlsx' : tag + '_Stock_' + from + '_to_' + to + '.xlsx');
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ===== ANALYSIS =====
