@@ -12,6 +12,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .topbar h1 { color: #c8f04c; font-size: 20px; font-weight: 700; }
 .topbar span { color: #888; font-size: 13px; }
 .refresh-btn { background: #c8f04c; color: #1a1a1a; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; }
+.backup-btn { background: #1a2b3c; color: #cfe8ff; border: none; padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; margin-right: 8px; }
+.backup-btn:hover { background: #24384d; }
+.expiry-panel { background: #fff; border-radius: 14px; padding: 18px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; border-left: 4px solid #ef6c00; }
+.expiry-panel h3 { font-size: 14px; font-weight: 700; color: #e65100; margin-bottom: 4px; }
+.expiry-panel .sub { font-size: 12px; color: #aaa; margin-bottom: 14px; }
+.ea-head { display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 12px; }
+.ea-chip { font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 20px; }
+.ea-chip.exp { background:#ffebee; color:#c62828; }
+.ea-chip.soon { background:#fff3e0; color:#e65100; }
+.ea-chip.ok30 { background:#fffde7; color:#f9a825; }
+.ea-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid #f2f2f2; font-size:13px; }
+.ea-row:last-child { border-bottom:none; }
+.ea-name { font-weight:600; flex:1; min-width:0; }
+.ea-store { font-size:12px; color:#889; margin-left:8px; white-space:nowrap; }
+.ea-date { font-size:12px; color:#666; white-space:nowrap; margin-left:8px; }
+.ea-badge { font-size:11px; font-weight:700; padding:3px 10px; border-radius:12px; white-space:nowrap; margin-left:8px; }
+.ea-badge.b-exp { background:#ffebee; color:#c62828; }
+.ea-badge.b-soon { background:#fff3e0; color:#e65100; }
+.ea-badge.b-30 { background:#fffde7; color:#f9a825; }
+.ea-empty { font-size:13px; color:#43a047; padding:6px 0; }
+.ea-more { font-size:12px; color:#1565c0; cursor:pointer; margin-top:10px; display:inline-block; }
 
 .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
 
@@ -211,7 +232,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <h1>Kenko1st</h1>
     <span>Manager Dashboard</span>
   </div>
-  <button class="refresh-btn" onclick="loadVisits()">🔄 Refresh</button>
+  <div><button class="backup-btn" onclick="downloadBackup()">💾 Backup</button><button class="refresh-btn" onclick="loadVisits()">🔄 Refresh</button></div>
 </div>
 
 <div class="container">
@@ -231,6 +252,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="sum-card ok"><div class="num" id="s-fullstock">-</div><div class="lbl">Full Stock Stores</div></div>
     <div class="sum-card"><div class="num" id="s-items">-</div><div class="lbl">Total Missing Items</div></div>
     <div class="sum-card"><div class="num" id="s-low" style="color:#f57f17;">-</div><div class="lbl">Total Low Stock Items</div></div>
+  </div>
+
+  <!-- Expiry Alerts -->
+  <div class="expiry-panel" id="expiry-panel" style="display:none;">
+    <h3>⏰ Expiry Alerts</h3>
+    <div class="sub">Items expiring soon or already expired — based on the latest check at each outlet. Pull or discount before they become waste.</div>
+    <div class="ea-head" id="ea-head"></div>
+    <div id="ea-body"></div>
   </div>
 
   <!-- Store Summary Table -->
@@ -425,6 +454,102 @@ function fmtD(dateStr) {
   return d + '/' + m + '/' + y;
 }
 
+function daysUntil(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d)) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.round((d - today) / 86400000);
+}
+
+// ===== EXPIRY ALERTS (aggregate across outlets, latest check per store) =====
+let expShowAll = false;
+function renderExpiryAlerts() {
+  const panel = document.getElementById('expiry-panel');
+  const head = document.getElementById('ea-head');
+  const body = document.getElementById('ea-body');
+  if (!allVisits.length) { panel.style.display = 'none'; return; }
+
+  // latest visit per store
+  const latest = {};
+  allVisits.forEach(v => { if (!latest[v.store] || new Date(v.savedAt) > new Date(latest[v.store].savedAt)) latest[v.store] = v; });
+
+  // flatten expiry entries -> rows {name, store, date, qty, loc, days}
+  const rows = [];
+  Object.values(latest).forEach(v => {
+    const sec = getSec(v);
+    (sec.expiry || []).forEach(e => {
+      const entries = e.entries && e.entries.length ? e.entries : (e.dates || []).map(d => ({ date: d }));
+      entries.forEach(x => {
+        if (!x.date) return;
+        rows.push({ name: (e.name || '').replace(' (LOW STOCK)',''), store: v.store, date: x.date, qty: x.qty || '', loc: x.loc || '', days: daysUntil(x.date) });
+      });
+    });
+  });
+
+  panel.style.display = 'block';
+  if (!rows.length) { head.innerHTML = ''; body.innerHTML = '<div class="ea-empty">✅ No expiry dates recorded yet.</div>'; return; }
+
+  rows.sort((a,b) => (a.days ?? 9e9) - (b.days ?? 9e9));
+  const expired = rows.filter(r => r.days !== null && r.days < 0).length;
+  const soon = rows.filter(r => r.days !== null && r.days >= 0 && r.days <= 7).length;
+  const in30 = rows.filter(r => r.days !== null && r.days > 7 && r.days <= 30).length;
+
+  head.innerHTML =
+    (expired ? `<span class="ea-chip exp">🔴 ${expired} expired</span>` : '') +
+    (soon ? `<span class="ea-chip soon">🟠 ${soon} within 7 days</span>` : '') +
+    (in30 ? `<span class="ea-chip ok30">🟡 ${in30} within 30 days</span>` : '') ||
+    '<span class="ea-chip ok30">All recorded dates are more than 30 days away</span>';
+
+  // default: show expired + within 30 days; "show all" reveals the rest
+  const near = rows.filter(r => r.days !== null && r.days <= 30);
+  const shown = expShowAll ? rows : (near.length ? near : rows.slice(0, 10));
+
+  body.innerHTML = shown.map(r => {
+    let badge = '', cls = '';
+    if (r.days === null) { badge = r.date; cls = ''; }
+    else if (r.days < 0) { badge = `${-r.days}d ago`; cls = 'b-exp'; }
+    else if (r.days === 0) { badge = 'Today'; cls = 'b-exp'; }
+    else if (r.days <= 7) { badge = `${r.days}d left`; cls = 'b-soon'; }
+    else if (r.days <= 30) { badge = `${r.days}d left`; cls = 'b-30'; }
+    else { badge = `${r.days}d left`; cls = ''; }
+    const locTxt = r.loc ? ` · ${r.loc}` : '';
+    const qtyTxt = r.qty ? ` ×${r.qty}` : '';
+    return `<div class="ea-row">
+      <span class="ea-name">${r.name}${qtyTxt}</span>
+      <span class="ea-store">🏪 ${r.store}${locTxt}</span>
+      <span class="ea-date">${fmtD(r.date)}</span>
+      <span class="ea-badge ${cls}">${badge}</span>
+    </div>`;
+  }).join('');
+
+  if (!expShowAll && rows.length > shown.length) {
+    body.innerHTML += `<span class="ea-more" onclick="expShowAll=true; renderExpiryAlerts();">Show all ${rows.length} dates ▾</span>`;
+  } else if (expShowAll && rows.length > near.length) {
+    body.innerHTML += `<span class="ea-more" onclick="expShowAll=false; renderExpiryAlerts();">Show less ▴</span>`;
+  }
+}
+
+// ===== FULL BACKUP (download everything as JSON) =====
+function downloadBackup() {
+  if (!allVisits.length && !allOrders.length) { alert('No data to back up yet.'); return; }
+  const backup = {
+    app: 'Kenko1st',
+    exportedAt: new Date().toISOString(),
+    counts: { visits: allVisits.length, orders: allOrders.length },
+    visits: allVisits,
+    orders: allOrders
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  const stamp = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  a.href = url;
+  a.download = `Kenko1st_backup_${stamp}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function downloadReport(v) {
   const time = new Date(v.savedAt).toLocaleString('en-GB');
   let text = `KENKO1ST AVAILABILITY REPORT\n`;
@@ -488,6 +613,7 @@ async function loadVisits() {
     document.getElementById('main-tabs').style.display = allOrders.length ? 'flex' : 'none';
     populateStoreFilter();
     renderSummary();
+    renderExpiryAlerts();
     renderStoreTable();
     renderAnalysisOutlets();
     setupExport();
@@ -683,7 +809,7 @@ function showMainTab(tab) {
   document.getElementById('mt-orders').classList.toggle('active', tab === 'orders');
   // visits-only sections
   const visitsMode = tab === 'visits';
-  ['summary-row','store-table','export-panel','analysis'].forEach(id => {
+  ['summary-row','expiry-panel','store-table','export-panel','analysis'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     if (id === 'summary-row') { el.style.display = visitsMode ? 'grid' : 'none'; return; }
