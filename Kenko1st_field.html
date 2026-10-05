@@ -411,7 +411,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
   <button class="btn-full btn-green" id="btn-share" onclick="shareReport()">📤 Submit & WhatsApp Share</button>
   <button class="btn-full btn-dark" id="btn-copy" onclick="copyReport()">📋 Copy Report</button>
-  <button class="btn-full btn-red" id="btn-new" onclick="newVisit()">🔄 New Visit</button>
+
+  <div id="gravity-report-wrap" style="display:none;margin-top:18px;border-top:1px dashed #333;padding-top:16px;">
+    <div style="font-size:12px;color:#4aa3df;font-weight:700;margin-bottom:8px;" id="lbl-gravity-preview">🥥 Gravity Report (separate message)</div>
+    <div class="report-box" id="gravity-report-preview"></div>
+    <button class="btn-full" id="btn-share-gravity" onclick="shareGravityReport()" style="background:#4aa3df;color:#0f2a3d;margin-top:8px;">🥥 Share Gravity Report</button>
+    <button class="btn-full btn-dark" id="btn-copy-gravity" onclick="copyGravityReport()" style="margin-top:8px;">📋 Copy Gravity Report</button>
+  </div>
+
+  <button class="btn-full btn-red" id="btn-new" onclick="newVisit()" style="margin-top:18px;">🔄 New Visit</button>
 </div>
 
 <!-- SCREEN: VISIT HISTORY -->
@@ -568,6 +576,7 @@ si: {
   ordCount:'Order එකේ items {}ක්', ordEmpty:'තාම items නැහැ — උඩින් search කරලා add කරන්න',
   ordSubmitted:'✅ Order එක manager ට යැව්වා!', ordManualTitle:'✍ List එකේ නැද්ද? අතින් type කරන්න',
   editBanner:'✏️ Edit mode — item එකක් ✕ එකෙන් අයින් කරන්න, උඩින් search කරලා add කරන්න. වෙනස්කම් මේ outlet එකට save වෙනවා.', eabTitle:'➕ මේ outlet එකට item එකක් add කරන්න',
+  lblGravityPreview:'🥥 Gravity Report (වෙනම message එකක්)', btnShareGravity:'🥥 Gravity Report යවන්න', btnCopyGravity:'📋 Gravity Report Copy',
   bsBanner:'📦 Back store stock — item එකකට back store එකේ තියෙන ගාණ type කරන්න. ඒක Gravity dashboard එකේ පෙන්නනවා.', bsUnit:'units'
 },
 ta: {
@@ -612,6 +621,7 @@ ta: {
   ordCount:'Order-இல் {} items', ordEmpty:'இன்னும் items இல்லை — மேலே search செய்து add செய்யவும்',
   ordSubmitted:'✅ Order manager-க்கு அனுப்பப்பட்டது!', ordManualTitle:'✍ List-இல் இல்லையா? கையால் type செய்யவும்',
   editBanner:'✏️ Edit mode — item-ஐ ✕ மூலம் நீக்கவும், மேலே search செய்து add செய்யவும். மாற்றங்கள் இந்த outlet-க்கு save ஆகும்.', eabTitle:'➕ இந்த outlet-க்கு item சேர்க்க',
+  lblGravityPreview:'🥥 Gravity Report (தனி message)', btnShareGravity:'🥥 Gravity Report அனுப்பு', btnCopyGravity:'📋 Gravity Report Copy',
   bsBanner:'📦 Back store stock — ஒவ்வொரு item-க்கும் back store-இல் உள்ள எண்ணிக்கையை type செய்யவும். இது Gravity dashboard-இல் காட்டப்படும்.', bsUnit:'units'
 },
 en: {
@@ -656,6 +666,7 @@ en: {
   ordCount:'{} items in order', ordEmpty:'No items yet — search above and add',
   ordSubmitted:'✅ Order sent to manager!', ordManualTitle:'✍ Not in the list? Type it manually',
   editBanner:'✏️ Edit mode — tap ✕ to remove an item, or search above to add. Changes are saved for this outlet.', eabTitle:'➕ Add an item to this outlet',
+  lblGravityPreview:'🥥 Gravity Report (separate message)', btnShareGravity:'🥥 Share Gravity Report', btnCopyGravity:'📋 Copy Gravity Report',
   bsBanner:'📦 Back store stock — type how many units are in the back store for each item. Shown in the Gravity dashboard.', bsUnit:'units'
 }
 };
@@ -705,6 +716,7 @@ function applyLang() {
   T('lbl-typehint','typeHint'); P('new-store-input','newStorePh');
   T('tab-visits','tabHistory'); T('tab-plan','tabPlan'); T('lbl-planform','lblPlanForm'); P('plan-loc','planLocPh');
   T('eab-title','eabTitle');
+  T('lbl-gravity-preview','lblGravityPreview'); T('btn-share-gravity','btnShareGravity'); T('btn-copy-gravity','btnCopyGravity');
   if (editMode) { const eb = document.getElementById('edit-mode-banner'); if (eb) eb.textContent = t('editBanner'); }
   T('btn-order','btnOrder'); T('ord-title','ordTitle'); T('ord-add-title','ordAddTitle');
   T('ord-manual-title','ordManualTitle'); P('ord-search','leSearchPh'); P('ord-manual-name','leManualPh');
@@ -1398,16 +1410,12 @@ let currentList = 'kenko';  // 'kenko' | 'gravity' — checklist එකේ activ
 
 // ===== GRAVITY (වෙනත් supplier) fixed list — DC code = unique id =====
 const GRAVITY_ITEMS = [
-  { code: '3007225', name: 'Gravity 100% White Kernel Extra Virgin Coconut 775ml' },
-  { code: '3007226', name: 'Gravity 100% White Kernel Extra Virgin Coconut 375ml' },
-  { code: '3008588', name: 'Gravity Whole Kernel Virgin Coconut Oil 750ml' },
-  { code: '3008589', name: 'Gravity Whole Kernel Virgin Coconut Oil 375ml' },
-  { code: '3013854', name: 'Gravity Pure Coconut Oil 750ml' },
-  { code: '3013855', name: 'Gravity Pure Coconut Oil 375ml' },
-  { code: '3016053', name: 'Blossom Coconut Flour 500g' },
-  { code: '3016054', name: 'Blossom Coconut Sugar 250g' },
-  { code: '3016055', name: 'Blossom Coconut Treacle 250ml' },
-  { code: '3016056', name: 'Blossom Grated Coconut 200g' }
+  { code: '3016056', name: 'Blossom Grated Coconut 200g' },
+  { code: '3007226', name: '100% White Kernel Extra Virgin Coconut 375ml' },
+  { code: '3007225', name: '100% White Kernel Extra Virgin Coconut 775ml' },
+  { code: '3013854', name: 'Pure Coconut Oil 750ml' },
+  { code: '3008588', name: 'Whole Kernel Virgin Coconut Oil 750ml' },
+  { code: '3016054', name: 'Blossom Coconut Sugar 250g' }
 ];
 
 function gravityItems() {
@@ -2137,6 +2145,16 @@ function goFinish() {
     ${un.length ? `<div class="visit-chip"><div class="vc-left">${t('chipUn')}</div><div class="vc-right">${un.length} items</div></div>` : ''}`;
 
   document.getElementById('report-preview').textContent = buildReport();
+
+  // Gravity — separate message block (only when there is Gravity data)
+  const gWrap = document.getElementById('gravity-report-wrap');
+  if (hasGravityData()) {
+    gWrap.style.display = 'block';
+    document.getElementById('gravity-report-preview').textContent = buildGravityReport();
+  } else {
+    gWrap.style.display = 'none';
+  }
+
   goTo('s-finish');
 }
 
@@ -2189,36 +2207,56 @@ function buildReport() {
   if (competitor) r += `🏷 Competitors: ${competitor}\n\n`;
   if (notes) r += `📝 Notes: ${notes}\n\n`;
 
-  // ===== GRAVITY supplier section (marked items only) =====
-  const gItems = gravityItems();
-  const gok = statusItems('ok', gItems), glow = statusItems('low', gItems), gmiss = statusItems('miss', gItems);
-  const gexp = gItems.map(p => ({ p, entries: getItemExpiry(p.code) })).filter(e => e.entries.length);
-  if (gok.length || glow.length || gmiss.length || gexp.length) {
-    r += `\n━━━━━━━━━━━━━━━━━━━━\n`;
-    r += `🥥 GRAVITY SUPPLIER\n`;
-    r += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-    if (gok.length) { r += `✅ AVAILABLE (${gok.length}):\n`; gok.forEach(p => r += `  • ${p.name}${qtyStr(p)}\n`); r += '\n'; }
-    if (glow.length) { r += `🟡 LOW STOCK (${glow.length}):\n`; glow.forEach(p => r += `  • ${p.name}${qtyStr(p)}\n`); r += '\n'; }
-    if (gmiss.length) { r += `🔴 MISSING (${gmiss.length}):\n`; gmiss.forEach(p => r += `  • ${p.name}\n`); r += '\n'; }
-    if (gexp.length) {
-      r += `⏰ EXPIRY DATES (${gexp.length}):\n`;
-      gexp.forEach(e => {
-        const ds = e.entries.map(x => fmtDate(x.date) + (x.qty ? ` (${x.qty})` : '') + (isExpired(x.date) ? ' ⚠EXPIRED' : isExpiringSoon(x.date) ? ' ⚠' : '')).join(', ');
-        r += `  • ${e.p.name} — ${ds}\n`;
-      });
-      r += '\n';
-    }
-    const gbs = gItems.filter(p => (gravityBackstock[p.code] || 0) > 0);
-    if (gbs.length) {
-      r += `📦 BACK STORE STOCK (${gbs.length}):\n`;
-      gbs.forEach(p => r += `  • ${p.name} — ${gravityBackstock[p.code]}\n`);
-      r += '\n';
-    }
-  }
-
   r += `━━━━━━━━━━━━━━━━━━━━\n`;
   r += `Missing: ${miss.length} · Low: ${low.length}\n`;
   r += `Status: ${miss.length === 0 && low.length === 0 ? '✅ FULL STOCK' : '⚠ ACTION REQUIRED'}`;
+  return r;
+}
+
+// ===== GRAVITY — standalone WhatsApp message (separate supplier) =====
+function hasGravityData() {
+  const g = gravityItems();
+  const gok = statusItems('ok', g), glow = statusItems('low', g), gmiss = statusItems('miss', g);
+  const gexp = g.some(p => getItemExpiry(p.code).length);
+  const gbs = g.some(p => (gravityBackstock[p.code] || 0) > 0);
+  return gok.length || glow.length || gmiss.length || gexp || gbs;
+}
+
+function buildGravityReport() {
+  const now = new Date();
+  const g = gravityItems();
+  const gok = statusItems('ok', g), glow = statusItems('low', g), gmiss = statusItems('miss', g);
+  const gexp = g.map(p => ({ p, entries: getItemExpiry(p.code) })).filter(e => e.entries.length);
+  const qtyStr = p => itemQty[p.code] ? ` ×${itemQty[p.code]}` : '';
+
+  let r = `🥥 GRAVITY SHELF REPORT\n`;
+  r += `━━━━━━━━━━━━━━━━━━━━\n`;
+  r += `Store: ${currentStore}\n`;
+  r += `Rep: ${currentRep}\n`;
+  r += `Date: ${fmtTime(now)}\n`;
+  r += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+  if (gok.length) { r += `✅ AVAILABLE (${gok.length}):\n`; gok.forEach(p => r += `  • ${p.name}${qtyStr(p)}\n`); r += '\n'; }
+  if (glow.length) { r += `🟡 LOW STOCK (${glow.length}):\n`; glow.forEach(p => r += `  • ${p.name}${qtyStr(p)}\n`); r += '\n'; }
+  if (gmiss.length) { r += `🔴 MISSING (${gmiss.length}):\n`; gmiss.forEach(p => r += `  • ${p.name}\n`); r += '\n'; }
+  if (gexp.length) {
+    r += `⏰ EXPIRY DATES (${gexp.length}):\n`;
+    gexp.forEach(e => {
+      const ds = e.entries.map(x => fmtDate(x.date) + (x.qty ? ` (${x.qty})` : '') + (isExpired(x.date) ? ' ⚠EXPIRED' : isExpiringSoon(x.date) ? ' ⚠' : '')).join(', ');
+      r += `  • ${e.p.name} — ${ds}\n`;
+    });
+    r += '\n';
+  }
+  const gbs = g.filter(p => (gravityBackstock[p.code] || 0) > 0);
+  if (gbs.length) {
+    r += `📦 BACK STORE STOCK (${gbs.length}):\n`;
+    gbs.forEach(p => r += `  • ${p.name} — ${gravityBackstock[p.code]}\n`);
+    r += '\n';
+  }
+
+  r += `━━━━━━━━━━━━━━━━━━━━\n`;
+  r += `Missing: ${gmiss.length} · Low: ${glow.length}\n`;
+  r += `Status: ${gmiss.length === 0 && glow.length === 0 ? '✅ FULL STOCK' : '⚠ ACTION REQUIRED'}`;
   return r;
 }
 
@@ -2610,10 +2648,22 @@ function renderHistory() {
 }
 
 function shareReport() {
-  submitVisit(); // Auto submit to manager dashboard
+  submitVisit(); // Auto submit to manager dashboard (saves BOTH Kenko + Gravity data)
   const text = buildReport();
   if (navigator.share) navigator.share({ title: 'Kenko1st Report', text });
   else { copyReport(); showToast(t('copiedWA')); }
+}
+
+function shareGravityReport() {
+  const text = buildGravityReport();
+  if (navigator.share) navigator.share({ title: 'Gravity Report', text });
+  else { copyGravityReport(); showToast(t('copiedWA')); }
+}
+
+function copyGravityReport() {
+  const text = buildGravityReport();
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => showToast(t('copied')));
+  else { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('Copied ✓'); }
 }
 
 function copyReport() {
