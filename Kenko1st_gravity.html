@@ -126,6 +126,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .exw-badge { font-size:11px; font-weight:800; padding:3px 10px; border-radius:12px; white-space:nowrap; }
 .exw-b-e { background:#ffebee; color:#c62828; } .exw-b-s { background:#fff3e0; color:#e65100; } .exw-b-t { background:#fffde7; color:#f9a825; }
 .feat-empty { font-size:13px; color:#43a047; padding:6px 0; }
+.roi-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:14px; font-size:12.5px; color:#789; }
+@media(max-width:640px){ .roi-grid{grid-template-columns:1fr} }
+.roi-grid b { display:block; font-size:24px; color:#16324a; margin-top:4px; }
+.roi-grid input { width:100%; margin-top:6px; padding:10px 12px; border:1px solid #d8e0e6; border-radius:9px; font-size:16px; font-weight:700; color:#16324a; outline:none; }
+.roi-grid input:focus { border-color:#1e8e5a; }
+.roi-targets { font-size:12.5px; color:#789; display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+.roi-t { border:1px solid #d8e0e6; background:#fff; color:#567; border-radius:8px; padding:6px 13px; font-size:13px; font-weight:700; cursor:pointer; }
+.roi-t.active { background:#1e8e5a; color:#fff; border-color:#1e8e5a; }
+.roi-out { background:#eef7f1; border:1px solid #cfe9d9; border-radius:11px; padding:15px 16px; font-size:14px; color:#16324a; line-height:1.5; }
+.roi-big { color:#1e8e5a; font-size:22px; }
+.roi-out .roi-sub { color:#789; font-size:13px; }
+.roi-hint { color:#9aa7b2; }
+.roi-note { font-size:11px; color:#aab4bd; margin-top:9px; }
 /* admin features */
 .adm-feat { background:#fffaf0; border:1px solid #ffe0a3; border-radius:12px; padding:14px 16px; margin-bottom:20px; }
 .adm-feat h4 { font-size:13px; font-weight:800; color:#b8730b; margin-bottom:4px; }
@@ -236,6 +249,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="adm-feat" id="adm-feat" style="display:none;">
     <h4>⚙ Features (admin)</h4>
     <div class="afh">Turn sections on/off for the supplier. Saved on the server — applies to everyone who opens this dashboard.</div>
+    <div class="adm-toggle"><span>💰 Sales uplift estimate</span><label class="switch"><input type="checkbox" id="ft-roi" onchange="onFeatureToggle()"><span class="slider"></span></label></div>
     <div class="adm-toggle"><span>📈 Availability trend</span><label class="switch"><input type="checkbox" id="ft-trend" onchange="onFeatureToggle()"><span class="slider"></span></label></div>
     <div class="adm-toggle"><span>🧰 Visit activity log</span><label class="switch"><input type="checkbox" id="ft-activity" onchange="onFeatureToggle()"><span class="slider"></span></label></div>
     <div class="adm-toggle"><span>⏰ Expiry / waste tracker</span><label class="switch"><input type="checkbox" id="ft-expiry" onchange="onFeatureToggle()"><span class="slider"></span></label></div>
@@ -260,6 +274,22 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <button class="report-btn" onclick="reportCoverage()">🗺️ Visit Coverage</button>
     <button class="report-btn" onclick="reportTrends()">📈 Problem Items</button>
     <button class="report-btn" onclick="reportBackStore()">📦 Back Store</button>
+  </div>
+
+  <div class="feat-panel" id="panel-roi" style="display:none;">
+    <h3>💰 What better availability is worth</h3>
+    <div class="fp-sub">A rough estimate of the sales you recover when your items are on the shelf more often.</div>
+    <div class="roi-grid">
+      <div>Your current shelf availability<b id="roi-avail">—</b></div>
+      <div>Your avg monthly sales in these outlets (Rs)<input id="roi-sales" type="tel" inputmode="numeric" placeholder="e.g. 250000" oninput="computeROI()"></div>
+    </div>
+    <div class="roi-targets">Target availability:
+      <button class="roi-t" data-t="85" onclick="setRoiTarget(85)">85%</button>
+      <button class="roi-t active" data-t="90" onclick="setRoiTarget(90)">90%</button>
+      <button class="roi-t" data-t="95" onclick="setRoiTarget(95)">95%</button>
+    </div>
+    <div class="roi-out" id="roi-out"></div>
+    <div class="roi-note">Rough estimate based on shelf availability only — actual results vary.</div>
   </div>
 
   <div class="feat-panel" id="panel-trend" style="display:none;">
@@ -1032,19 +1062,20 @@ function initPWA() {
 }
 initPWA();
 // ===================== SUPPLIER FEATURES (admin toggleable) =====================
-let FEATURES = { trend: true, activity: true, expiry: true };
+let FEATURES = { roi: true, trend: true, activity: true, expiry: true };
 
 async function loadSettings() {
   try {
     const r = await fetch(WORKER_URL + '/get-settings');
     const s = await r.json();
-    if (s && typeof s === 'object') FEATURES = Object.assign({ trend:true, activity:true, expiry:true }, s);
+    if (s && typeof s === 'object') FEATURES = Object.assign({ roi:true, trend:true, activity:true, expiry:true }, s);
   } catch (e) {}
 }
 async function saveSettings() {
   try { await fetch(WORKER_URL + '/save-settings', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(FEATURES) }); } catch (e) {}
 }
 function onFeatureToggle() {
+  FEATURES.roi = document.getElementById('ft-roi').checked;
   FEATURES.trend = document.getElementById('ft-trend').checked;
   FEATURES.activity = document.getElementById('ft-activity').checked;
   FEATURES.expiry = document.getElementById('ft-expiry').checked;
@@ -1055,11 +1086,51 @@ function renderAdminFeatures() {
   const p = document.getElementById('adm-feat');
   if (!ADMIN) { p.style.display = 'none'; return; }
   p.style.display = 'block';
+  document.getElementById('ft-roi').checked = !!FEATURES.roi;
   document.getElementById('ft-trend').checked = !!FEATURES.trend;
   document.getElementById('ft-activity').checked = !!FEATURES.activity;
   document.getElementById('ft-expiry').checked = !!FEATURES.expiry;
 }
-function renderFeatures() { renderTrend(); renderActivity(); renderExpiryWaste(); }
+function renderFeatures() { renderROI(); renderTrend(); renderActivity(); renderExpiryWaste(); }
+
+// 💰 Sales uplift estimate (ROI)
+let ROI_AVAIL = 0, ROI_TARGET = 90;
+function renderROI() {
+  const panel = document.getElementById('panel-roi');
+  if (!FEATURES.roi) { panel.style.display = 'none'; return; }
+  let ok = 0, tot = 0;
+  Object.values(latestPerStore()).forEach(v => {
+    const s = gravSec(v); if (!s) return;
+    const a = availItems(s).length, l = (s.low || []).length, m = (s.missing || []).length;
+    ok += a; tot += (a + l + m);
+  });
+  if (!tot) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  ROI_AVAIL = Math.round(ok / tot * 100);
+  document.getElementById('roi-avail').textContent = ROI_AVAIL + '%';
+  try { const saved = localStorage.getItem('ss_roi_sales'); if (saved && !document.getElementById('roi-sales').value) document.getElementById('roi-sales').value = saved; } catch (e) {}
+  computeROI();
+}
+function setRoiTarget(t) {
+  ROI_TARGET = t;
+  document.querySelectorAll('.roi-t').forEach(b => b.classList.toggle('active', (+b.dataset.t) === t));
+  computeROI();
+}
+function computeROI() {
+  const inp = document.getElementById('roi-sales');
+  const out = document.getElementById('roi-out');
+  const sales = parseFloat((inp.value || '').replace(/[^0-9.]/g, ''));
+  try { localStorage.setItem('ss_roi_sales', inp.value || ''); } catch (e) {}
+  if (!sales || sales <= 0) { out.innerHTML = '<span class="roi-hint">Enter your monthly sales above to see the estimate.</span>'; return; }
+  if (!ROI_AVAIL) { out.innerHTML = '<span class="roi-hint">Availability data needed.</span>'; return; }
+  if (ROI_AVAIL >= ROI_TARGET) {
+    out.innerHTML = `🎉 You're already at <b>${ROI_AVAIL}%</b> — at or above the ${ROI_TARGET}% target. The gap is small; keeping it there protects these sales.`;
+    return;
+  }
+  const uplift = sales * (ROI_TARGET - ROI_AVAIL) / ROI_AVAIL;
+  const m = Math.round(uplift), y = Math.round(uplift * 12);
+  out.innerHTML = `Lifting availability from <b>${ROI_AVAIL}%</b> to <b>${ROI_TARGET}%</b> could recover about <b class="roi-big">Rs.&nbsp;${m.toLocaleString()}</b> / month <span class="roi-sub">(≈ Rs.&nbsp;${y.toLocaleString()} / year)</span> in these outlets.`;
+}
 
 function weekStart(iso) { const d = new Date(iso); const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); d.setHours(0,0,0,0); return d; }
 
