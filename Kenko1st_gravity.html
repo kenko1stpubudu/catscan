@@ -98,6 +98,46 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .err { background: #ffebee; border: 1px solid #ffcdd2; color: #c62828; padding: 14px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; display: none; }
 .last-updated { font-size: 12px; color: #abb; text-align: right; margin-bottom: 16px; }
 .reports-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+.feat-panel { background:#fff; border:1px solid #e3e8ee; border-radius:14px; padding:18px 20px; box-shadow:0 1px 4px rgba(0,0,0,0.06); margin-bottom:22px; }
+.feat-panel h3 { font-size:14px; font-weight:800; margin-bottom:3px; display:flex; align-items:center; gap:8px; }
+.feat-panel .fp-sub { font-size:12px; color:#9aa7b2; margin-bottom:14px; }
+.tr-head { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+.tr-big { font-size:32px; font-weight:800; color:#1f7bb6; line-height:1; }
+.tr-delta { font-size:12px; font-weight:800; padding:3px 9px; border-radius:8px; }
+.tr-up { background:#e4f4ea; color:#1e8e5a; } .tr-dn { background:#ffebee; color:#c62828; }
+.tr-cap { font-size:12px; color:#9aa7b2; }
+.feat-panel svg { display:block; width:100%; height:auto; }
+.act-row { display:flex; align-items:flex-start; gap:12px; padding:11px 0; border-bottom:1px solid #f0f3f4; }
+.act-row:last-child { border-bottom:none; }
+.act-dot { width:10px; height:10px; border-radius:50%; background:#1f7bb6; margin-top:5px; flex-shrink:0; }
+.act-body { flex:1; min-width:0; }
+.act-store { font-weight:700; font-size:13px; }
+.act-when { font-size:11px; color:#9aa7b2; margin-left:6px; }
+.act-tags { margin-top:4px; display:flex; gap:8px; flex-wrap:wrap; font-size:12px; }
+.act-tag { background:#f2f6f9; border-radius:7px; padding:2px 8px; color:#456; }
+.act-tag.g { background:#e4f4ea; color:#1e8e5a; } .act-tag.a { background:#fff4d6; color:#b8860b; } .act-tag.r { background:#fde7e7; color:#c62828; } .act-tag.b { background:#eef6fc; color:#1f7bb6; }
+.exw-chips { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+.exw-chip { font-size:12px; font-weight:800; padding:5px 12px; border-radius:20px; }
+.exw-chip.e { background:#ffebee; color:#c62828; } .exw-chip.s { background:#fff3e0; color:#e65100; } .exw-chip.t { background:#fffde7; color:#f9a825; }
+.exw-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid #f0f3f4; font-size:13px; }
+.exw-row:last-child { border-bottom:none; }
+.exw-name { font-weight:600; flex:1; min-width:0; }
+.exw-store { font-size:12px; color:#9aa7b2; }
+.exw-badge { font-size:11px; font-weight:800; padding:3px 10px; border-radius:12px; white-space:nowrap; }
+.exw-b-e { background:#ffebee; color:#c62828; } .exw-b-s { background:#fff3e0; color:#e65100; } .exw-b-t { background:#fffde7; color:#f9a825; }
+.feat-empty { font-size:13px; color:#43a047; padding:6px 0; }
+/* admin features */
+.adm-feat { background:#fffaf0; border:1px solid #ffe0a3; border-radius:12px; padding:14px 16px; margin-bottom:20px; }
+.adm-feat h4 { font-size:13px; font-weight:800; color:#b8730b; margin-bottom:4px; }
+.adm-feat .afh { font-size:12px; color:#9a7b3a; margin-bottom:10px; }
+.adm-toggle { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-top:1px solid #f3e6c8; font-size:13px; }
+.adm-toggle:first-of-type { border-top:none; }
+.switch { position:relative; width:42px; height:24px; flex-shrink:0; }
+.switch input { opacity:0; width:0; height:0; }
+.slider { position:absolute; inset:0; background:#cbd5db; border-radius:24px; transition:.2s; cursor:pointer; }
+.slider:before { content:''; position:absolute; height:18px; width:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; }
+.switch input:checked + .slider { background:#1e8e5a; }
+.switch input:checked + .slider:before { transform:translateX(18px); }
 .report-btn { background: #fff; border: 1px solid #d8e6f2; border-radius: 10px; padding: 11px 16px; font-size: 13px; font-weight: 700; color: #1f5e85; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 7px; }
 .report-btn:hover { border-color: #3ec8f4; background: #f2fbff; }
 .rep-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -193,9 +233,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div class="container">
   <div class="err" id="err"></div>
   <div class="admin-banner" id="admin-banner" style="display:none;">🔧 Admin mode — Clear buttons enabled. (The normal supplier link, without <b>?admin=1</b>, will not show these.)</div>
+  <div class="adm-feat" id="adm-feat" style="display:none;">
+    <h4>⚙ Features (admin)</h4>
+    <div class="afh">Turn sections on/off for the supplier. Saved on the server — applies to everyone who opens this dashboard.</div>
+    <div class="adm-toggle"><span>📈 Availability trend</span><label class="switch"><input type="checkbox" id="ft-trend" onchange="onFeatureToggle()"><span class="slider"></span></label></div>
+    <div class="adm-toggle"><span>🧰 Visit activity log</span><label class="switch"><input type="checkbox" id="ft-activity" onchange="onFeatureToggle()"><span class="slider"></span></label></div>
+    <div class="adm-toggle"><span>⏰ Expiry / waste tracker</span><label class="switch"><input type="checkbox" id="ft-expiry" onchange="onFeatureToggle()"><span class="slider"></span></label></div>
+  </div>
 
   <div class="summary-row">
-    <div class="sum-card"><div class="num" id="s-visits">0</div><div class="lbl">Outlets Checked (today)</div></div>
+    <div class="sum-card"><div class="num" id="s-visits">0</div><div class="lbl">Outlets Checked</div></div>
     <div class="sum-card warn"><div class="num" id="s-missing">0</div><div class="lbl">Outlets w/ Missing</div></div>
     <div class="sum-card ok"><div class="num" id="s-fullstock">0</div><div class="lbl">Full Stock Outlets</div></div>
     <div class="sum-card warn"><div class="num" id="s-items">0</div><div class="lbl">Missing Items</div></div>
@@ -213,6 +260,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <button class="report-btn" onclick="reportCoverage()">🗺️ Visit Coverage</button>
     <button class="report-btn" onclick="reportTrends()">📈 Problem Items</button>
     <button class="report-btn" onclick="reportBackStore()">📦 Back Store</button>
+  </div>
+
+  <div class="feat-panel" id="panel-trend" style="display:none;">
+    <h3>📈 Shelf availability over time</h3>
+    <div class="fp-sub">Share of your items actually on the shelf, measured each week we visit.</div>
+    <div class="tr-head"><span class="tr-big" id="tr-now">—</span><span class="tr-delta" id="tr-delta"></span><span class="tr-cap" id="tr-cap"></span></div>
+    <div id="tr-chart"></div>
+  </div>
+
+  <div class="feat-panel" id="panel-activity" style="display:none;">
+    <h3>🧰 What our team checked</h3>
+    <div class="fp-sub">A log of recent visits and what we found and flagged each time.</div>
+    <div id="act-body"></div>
+  </div>
+
+  <div class="feat-panel" id="panel-expiry" style="display:none;">
+    <h3>⏰ Expiry &amp; waste watch</h3>
+    <div class="fp-sub">Stock expiring soon or already expired — pull or discount before it becomes waste.</div>
+    <div class="exw-chips" id="exw-chips"></div>
+    <div id="exw-body"></div>
   </div>
 
   <div class="store-table" id="store-table" style="display:none;">
@@ -313,6 +380,9 @@ async function loadVisits() {
     renderStoreTable();
     renderVisits();
     setupExport();
+    await loadSettings();
+    renderFeatures();
+    renderAdminFeatures();
     document.getElementById('last-updated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
     document.getElementById('date-lbl').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   } catch (e) {
@@ -331,9 +401,8 @@ function populateStoreFilter() {
 }
 
 function renderSummary() {
-  const today = new Date().toDateString();
-  const todayVisits = allVisits.filter(v => new Date(v.savedAt).toDateString() === today);
-  const scope = todayVisits.length ? todayVisits : allVisits;
+  // current state across all outlets (latest check at each outlet)
+  const scope = Object.values(latestPerStore());
   const withMissing = scope.filter(v => cntMissing(v) > 0);
   const fullStock = scope.filter(v => cntMissing(v) === 0 && cntLow(v) === 0);
   const totalMissingItems = scope.reduce((s, v) => s + cntMissing(v), 0);
@@ -962,6 +1031,140 @@ function initPWA() {
   addLink('manifest', URL.createObjectURL(blob));
 }
 initPWA();
+// ===================== SUPPLIER FEATURES (admin toggleable) =====================
+let FEATURES = { trend: true, activity: true, expiry: true };
+
+async function loadSettings() {
+  try {
+    const r = await fetch(WORKER_URL + '/get-settings');
+    const s = await r.json();
+    if (s && typeof s === 'object') FEATURES = Object.assign({ trend:true, activity:true, expiry:true }, s);
+  } catch (e) {}
+}
+async function saveSettings() {
+  try { await fetch(WORKER_URL + '/save-settings', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(FEATURES) }); } catch (e) {}
+}
+function onFeatureToggle() {
+  FEATURES.trend = document.getElementById('ft-trend').checked;
+  FEATURES.activity = document.getElementById('ft-activity').checked;
+  FEATURES.expiry = document.getElementById('ft-expiry').checked;
+  saveSettings();
+  renderFeatures();
+}
+function renderAdminFeatures() {
+  const p = document.getElementById('adm-feat');
+  if (!ADMIN) { p.style.display = 'none'; return; }
+  p.style.display = 'block';
+  document.getElementById('ft-trend').checked = !!FEATURES.trend;
+  document.getElementById('ft-activity').checked = !!FEATURES.activity;
+  document.getElementById('ft-expiry').checked = !!FEATURES.expiry;
+}
+function renderFeatures() { renderTrend(); renderActivity(); renderExpiryWaste(); }
+
+function weekStart(iso) { const d = new Date(iso); const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); d.setHours(0,0,0,0); return d; }
+
+// 📈 Availability trend (weekly, from real gravity data)
+function renderTrend() {
+  const panel = document.getElementById('panel-trend');
+  if (!FEATURES.trend) { panel.style.display = 'none'; return; }
+  const buckets = {};
+  allVisits.forEach(v => {
+    const sec = gravSec(v); if (!sec) return;
+    const wk = weekStart(v.savedAt), key = wk.getTime();
+    buckets[key] = buckets[key] || { t: wk, ok: 0, tot: 0 };
+    const ok = availItems(sec).length, low = (sec.low || []).length, miss = (sec.missing || []).length;
+    buckets[key].ok += ok; buckets[key].tot += (ok + low + miss);
+  });
+  let arr = Object.values(buckets).filter(b => b.tot > 0).sort((a, b) => a.t - b.t).slice(-8);
+  if (!arr.length) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  const series = arr.map(b => Math.round(b.ok / b.tot * 100));
+  const now = series[series.length - 1], first = series[0];
+  document.getElementById('tr-now').textContent = now + '%';
+  const d = now - first;
+  const de = document.getElementById('tr-delta');
+  if (series.length >= 2) { de.style.display=''; de.className = 'tr-delta ' + (d >= 0 ? 'tr-up' : 'tr-dn'); de.textContent = (d >= 0 ? '▲ +' : '▼ ') + d + ' pts'; }
+  else { de.style.display='none'; }
+  document.getElementById('tr-cap').textContent = series.length >= 2 ? ('over ' + series.length + ' weeks') : 'first week — trend builds as we visit again';
+  drawTrendChart(arr.map(b => b.t), series);
+}
+function drawTrendChart(times, series) {
+  const box = document.getElementById('tr-chart');
+  if (series.length < 2) { box.innerHTML = ''; return; }
+  const W = 680, H = 180, pad = { l: 32, r: 14, t: 16, b: 24 }, iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+  const n = series.length, min = Math.max(0, Math.min(...series) - 8), max = 100;
+  const x = i => pad.l + iw * (i / (n - 1)), y = v => pad.t + ih * (1 - (v - min) / (max - min));
+  let grid = '';
+  [40,60,80,100].forEach(v => { if (v >= min) { const yy = y(v); grid += `<line x1="${pad.l}" y1="${yy}" x2="${W-pad.r}" y2="${yy}" stroke="#eef2f4"/><text x="4" y="${yy+4}" font-size="10" fill="#9aa">${v}</text>`; } });
+  const pts = series.map((v, i) => [x(i), y(v)]);
+  const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  const area = `M ${pad.l} ${pad.t+ih} ` + pts.map(p => 'L ' + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ') + ` L ${W-pad.r} ${pad.t+ih} Z`;
+  const dots = pts.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="${i===n-1?5:3.5}" fill="${i===n-1?'#15658f':'#1f7bb6'}" stroke="#fff" stroke-width="2"/>` + (i===n-1?`<text x="${p[0]}" y="${p[1]-10}" font-size="12" font-weight="800" fill="#15658f" text-anchor="middle">${series[i]}%</text>`:'')).join('');
+  const labels = times.map((t, i) => `<text x="${x(i)}" y="${H-6}" font-size="9" fill="#9aa" text-anchor="middle">${new Date(t).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</text>`).join('');
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="trg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1f7bb6" stop-opacity=".16"/><stop offset="1" stop-color="#1f7bb6" stop-opacity="0"/></linearGradient></defs>${grid}<path d="${area}" fill="url(#trg)"/><path d="${line}" fill="none" stroke="#1f7bb6" stroke-width="2.5" stroke-linejoin="round"/>${dots}${labels}</svg>`;
+}
+
+// 🧰 Visit activity log (what the team checked/flagged)
+function renderActivity() {
+  const panel = document.getElementById('panel-activity');
+  if (!FEATURES.activity) { panel.style.display = 'none'; return; }
+  const visits = allVisits.slice().sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt)).slice(0, 8);
+  const rows = visits.map(v => {
+    const sec = gravSec(v); if (!sec) return null;
+    const ok = availItems(sec).length, low = (sec.low || []).length, miss = (sec.missing || []).length;
+    const missL = (sec.missing || []).map(p => p.code), lowL = (sec.low || []).map(p => p.code);
+    const pull = (sec.backstock || []).filter(p => missL.includes(p.code) || lowL.includes(p.code)).length;
+    const exp = (sec.expiry || []).length;
+    return { store: v.store, date: v.savedAt, ok, low, miss, pull, exp };
+  }).filter(Boolean);
+  if (!rows.length) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  document.getElementById('act-body').innerHTML = rows.map(r => {
+    const when = new Date(r.date).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+    let tags = `<span class="act-tag g">✓ ${r.ok} on shelf</span>`;
+    if (r.low) tags += `<span class="act-tag a">🟡 ${r.low} low</span>`;
+    if (r.miss) tags += `<span class="act-tag r">🔴 ${r.miss} gap${r.miss>1?'s':''} found</span>`;
+    if (r.pull) tags += `<span class="act-tag b">📦 ${r.pull} to pull from back</span>`;
+    if (r.exp) tags += `<span class="act-tag a">⏰ ${r.exp} expiry flag${r.exp>1?'s':''}</span>`;
+    return `<div class="act-row"><span class="act-dot"></span><div class="act-body"><span class="act-store">🏪 ${r.store}</span><span class="act-when">${when}</span><div class="act-tags">${tags}</div></div></div>`;
+  }).join('');
+}
+
+// ⏰ Expiry / waste tracker (latest per outlet)
+function renderExpiryWaste() {
+  const panel = document.getElementById('panel-expiry');
+  if (!FEATURES.expiry) { panel.style.display = 'none'; return; }
+  const latest = latestPerStore();
+  const rows = [];
+  Object.values(latest).forEach(v => {
+    const sec = gravSec(v); if (!sec) return;
+    (sec.expiry || []).forEach(e => {
+      const entries = e.entries && e.entries.length ? e.entries : (e.dates || []).map(d => ({ date: d }));
+      entries.forEach(x => { if (x.date) rows.push({ name: (e.name||'').replace(' (LOW STOCK)',''), store: v.store, date: x.date, qty: x.qty || '', days: daysSinceISO(x.date) * -1 }); });
+    });
+  });
+  if (!rows.length) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  rows.sort((a, b) => a.days - b.days);
+  const expired = rows.filter(r => r.days < 0).length, soon = rows.filter(r => r.days >= 0 && r.days <= 7).length, in30 = rows.filter(r => r.days > 7 && r.days <= 30).length;
+  document.getElementById('exw-chips').innerHTML =
+    (expired ? `<span class="exw-chip e">🔴 ${expired} expired</span>` : '') +
+    (soon ? `<span class="exw-chip s">🟠 ${soon} within 7 days</span>` : '') +
+    (in30 ? `<span class="exw-chip t">🟡 ${in30} within 30 days</span>` : '') ||
+    '<span class="exw-chip t">All recorded dates are 30+ days away</span>';
+  const near = rows.filter(r => r.days <= 30);
+  const shown = near.length ? near : rows.slice(0, 8);
+  document.getElementById('exw-body').innerHTML = shown.map(r => {
+    let badge, cls;
+    if (r.days < 0) { badge = `${-r.days}d ago`; cls = 'exw-b-e'; }
+    else if (r.days === 0) { badge = 'Today'; cls = 'exw-b-e'; }
+    else if (r.days <= 7) { badge = `${r.days}d left`; cls = 'exw-b-s'; }
+    else if (r.days <= 30) { badge = `${r.days}d left`; cls = 'exw-b-t'; }
+    else { badge = `${r.days}d left`; cls = 'exw-b-t'; }
+    return `<div class="exw-row"><span class="exw-name">${r.name}${r.qty?` ×${r.qty}`:''}</span><span class="exw-store">🏪 ${r.store}</span><span class="exw-badge ${cls}">${badge}</span></div>`;
+  }).join('');
+}
+
 document.getElementById('brand-logo').src = LOGO;
 document.getElementById('palm-wm').src = PALM;
 loadVisits();
