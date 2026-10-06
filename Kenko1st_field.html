@@ -220,6 +220,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .ba-share { width: 100%; background: #25D366; color: #073; border: none; border-radius: 10px; padding: 12px; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 14px; margin-top: 12px; }
 .ba-share:disabled { background: #2a2a2a; color: #666; cursor: not-allowed; }
 .ba-hint { font-size: 11px; color: #777; margin-top: 8px; text-align: center; }
+.ba-spot { background: #0f0f0f; border: 1px solid #262626; border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+.ba-spot-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ba-spot-label { flex: 1; min-width: 0; background: #161616; border: 1px solid #2a2a2a; border-radius: 8px; color: #f0f0f0; font-family: inherit; font-size: 12px; padding: 8px 10px; outline: none; }
+.ba-spot-label:focus { border-color: #4aa3df55; }
+.ba-spot-rm { color: #ff6b6b; font-size: 14px; font-weight: 800; cursor: pointer; padding: 2px 8px; }
+.ba-add { width: 100%; background: #161616; border: 1px dashed #4aa3df44; color: #4aa3df; border-radius: 10px; padding: 10px; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 13px; margin-bottom: 12px; }
 .edit-mode-banner { background: rgba(255,140,0,0.1); border: 1px solid #ff8c0044; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #ff8c00; margin-bottom: 10px; }
 .cl-rm { background: rgba(255,82,82,0.14); color: #ff5252; border: none; width: 30px; height: 30px; border-radius: 8px; font-size: 15px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
 .edit-add-box { background: #161616; border: 1px solid #ff8c0033; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
@@ -383,23 +389,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
   <div class="ba-box" id="ba-box" style="display:none;">
     <div class="ba-title">📸 Before / After — one image to WhatsApp</div>
-    <div class="ba-slots">
-      <div class="ba-slot before">
-        <div class="ba-lab">① Before</div>
-        <div class="ba-cap" id="ba-cap-before" onclick="document.getElementById('ba-in-before').click()">📷<span>Tap to add</span></div>
-        <span class="ba-retake" id="ba-re-before" style="display:none;" onclick="document.getElementById('ba-in-before').click()">Retake</span>
-      </div>
-      <div class="ba-slot after">
-        <div class="ba-lab">② After</div>
-        <div class="ba-cap" id="ba-cap-after" onclick="document.getElementById('ba-in-after').click()">📷<span>Tap to add</span></div>
-        <span class="ba-retake" id="ba-re-after" style="display:none;" onclick="document.getElementById('ba-in-after').click()">Retake</span>
-      </div>
-    </div>
+    <div id="ba-spots"></div>
+    <button class="ba-add" id="ba-add" onclick="baAddSpot()">➕ Add another spot (different shelf place)</button>
     <button class="ba-share" id="ba-share-btn" onclick="shareBeforeAfter()" disabled>📲 Share Before/After</button>
-    <div style="text-align:center;"><span class="ba-retake" id="ba-clear" style="display:none;" onclick="baClear()">✕ Clear both</span></div>
-    <div class="ba-hint">Both photos combine into one labelled image with the store &amp; date. Saved on this phone — safe if you close the app; take "Before", come back later for "After".</div>
-    <input type="file" accept="image/*" capture="environment" id="ba-in-before" style="display:none" onchange="onBaPhoto('before', this)">
-    <input type="file" accept="image/*" capture="environment" id="ba-in-after" style="display:none" onchange="onBaPhoto('after', this)">
+    <div style="text-align:center;"><span class="ba-retake" id="ba-clear" style="display:none;" onclick="baClear()">✕ Clear all</span></div>
+    <div class="ba-hint">Add a spot for each shelf place (e.g. Coconut Oil, Coconut Sugar). Each becomes its own clear labelled photo; all are sent together in one share. Saved on this phone — safe if you close the app.</div>
+    <input type="file" accept="image/*" capture="environment" id="ba-input" style="display:none" onchange="onBaPhoto(this)">
   </div>
 
   <div class="edit-add-box" id="edit-add-box" style="display:none;">
@@ -1509,7 +1504,8 @@ let editMode = false;  // checklist එකේ item edit mode
 let backstockMode = false;    // Gravity back-store stock entry mode
 let gravityBackstock = {};    // { code: qty } — Gravity items වල back store stock
 let baMode = false;           // Before/After panel open
-let baBefore = null, baAfter = null;  // data URLs (in-memory only)
+let baSpots = [{ label: '', before: null, after: null }];  // per shelf-location pairs (in-memory + localStorage)
+let baTargetSpot = 0, baTargetWhich = 'before';
 
 // Stores (localStorage) — v3: outlet names only, location වෙනම type කරනවා
 const OLD_DEFAULTS = ['Spar Kalubovila','Spar Thalawathugoda','Spar Pepilitana','Healthguard Pharmacy','Jeewaka Pharmacy','Kandy','CFC','Ovita','Park Street','Uptown','NW','Shade','Mawella','Diligez'];
@@ -1599,11 +1595,11 @@ function startVisit() {
   editMode = false;
   backstockMode = false;
   gravityBackstock = {};
-  baMode = false; baBefore = null; baAfter = null;
+  baMode = false; baSpots = [{ label: '', before: null, after: null }];
   const baT0 = document.getElementById('ba-toggle'); if (baT0) baT0.classList.remove('active');
   const baB0 = document.getElementById('ba-box'); if (baB0) baB0.style.display = 'none';
   baLoad();   // restore any Before/After taken earlier for this outlet
-  if (document.getElementById('ba-cap-before')) renderBaPreviews();
+  if (document.getElementById('ba-spots')) renderBaSpots();
   currentList = 'kenko';
   const et = document.getElementById('edit-list-toggle'); if (et) et.classList.remove('active');
   const eb = document.getElementById('edit-mode-banner'); if (eb) eb.style.display = 'none';
@@ -2012,39 +2008,66 @@ function baReadScaled(file) {
   });
 }
 
-async function onBaPhoto(which, input) {
+function baCapture(idx, which) { baTargetSpot = idx; baTargetWhich = which; document.getElementById('ba-input').click(); }
+
+async function onBaPhoto(input) {
   const file = input.files && input.files[0];
-  if (!file) return;
+  if (!file) { return; }
   try {
     const url = await baReadScaled(file);
-    if (which === 'before') baBefore = url; else baAfter = url;
-    renderBaPreviews();
+    const s = baSpots[baTargetSpot];
+    if (s) { if (baTargetWhich === 'before') s.before = url; else s.after = url; }
+    renderBaSpots();
     baSave();
   } catch (e) { showToast('Could not read photo'); }
   input.value = '';
 }
 
-function renderBaPreviews() {
-  const setSlot = (which, url) => {
-    const cap = document.getElementById('ba-cap-' + which);
-    const re = document.getElementById('ba-re-' + which);
-    if (url) { cap.classList.add('has'); cap.innerHTML = `<img src="${url}" alt="">`; re.style.display = 'inline-block'; }
-    else { cap.classList.remove('has'); cap.innerHTML = '📷<span>Tap to add</span>'; re.style.display = 'none'; }
+function baAddSpot() {
+  if (baSpots.length >= 4) { showToast('Up to 4 spots'); return; }
+  baSpots.push({ label: '', before: null, after: null });
+  renderBaSpots();
+}
+function baRemoveSpot(idx) {
+  baSpots.splice(idx, 1);
+  if (!baSpots.length) baSpots = [{ label: '', before: null, after: null }];
+  renderBaSpots();
+  baSave();
+}
+function baSetLabel(idx, val) { if (baSpots[idx]) { baSpots[idx].label = val; baSave(); } }
+
+function renderBaSpots() {
+  const wrap = document.getElementById('ba-spots');
+  if (!wrap) return;
+  const slot = (i, which) => {
+    const url = baSpots[i][which];
+    const name = which === 'before' ? 'Before' : 'After';
+    return `<div class="ba-slot ${which}"><div class="ba-lab">${which === 'before' ? '①' : '②'} ${name}</div>` +
+      `<div class="ba-cap ${url ? 'has' : ''}" onclick="baCapture(${i},'${which}')">${url ? `<img src="${url}" alt="">` : '📷<span>Tap to add</span>'}</div>` +
+      (url ? `<span class="ba-retake" onclick="baCapture(${i},'${which}')">Retake</span>` : '') + `</div>`;
   };
-  setSlot('before', baBefore);
-  setSlot('after', baAfter);
-  document.getElementById('ba-share-btn').disabled = !(baBefore && baAfter);
-  const clr = document.getElementById('ba-clear'); if (clr) clr.style.display = (baBefore || baAfter) ? 'inline-block' : 'none';
+  wrap.innerHTML = baSpots.map((s, i) => `<div class="ba-spot">
+      <div class="ba-spot-head">
+        <input class="ba-spot-label" placeholder="Spot ${i + 1} name (e.g. Coconut Oil)" value="${(s.label || '').replace(/"/g, '&quot;')}" oninput="baSetLabel(${i}, this.value)">
+        ${baSpots.length > 1 ? `<span class="ba-spot-rm" onclick="baRemoveSpot(${i})" title="Remove spot">✕</span>` : ''}
+      </div>
+      <div class="ba-slots">${slot(i, 'before')}${slot(i, 'after')}</div>
+    </div>`).join('');
+  const add = document.getElementById('ba-add'); if (add) add.style.display = baSpots.length < 4 ? 'block' : 'none';
+  const complete = baSpots.filter(s => s.before && s.after).length;
+  document.getElementById('ba-share-btn').disabled = complete === 0;
+  const clr = document.getElementById('ba-clear'); if (clr) clr.style.display = baSpots.some(s => s.before || s.after || s.label) ? 'inline-block' : 'none';
 }
 
-// persist Before/After per outlet (survives app close); pruned after 24h
+// persist spots per outlet (survives app close); pruned after 24h
 const BA_KEY = 'kenko_ba_v1';
 function baSave() {
   try {
     let map = JSON.parse(localStorage.getItem(BA_KEY) || '{}');
     const now = Date.now();
     Object.keys(map).forEach(k => { if (!map[k] || !map[k].ts || now - map[k].ts > 86400000) delete map[k]; });
-    if (baBefore || baAfter) map[currentStore] = { before: baBefore, after: baAfter, ts: now };
+    const any = baSpots.some(s => s.before || s.after || s.label);
+    if (any) map[currentStore] = { spots: baSpots, ts: now };
     else delete map[currentStore];
     localStorage.setItem(BA_KEY, JSON.stringify(map));
   } catch (e) { /* quota/parse — stays in memory for this session */ }
@@ -2053,71 +2076,81 @@ function baLoad() {
   try {
     const map = JSON.parse(localStorage.getItem(BA_KEY) || '{}');
     const e = map[currentStore];
-    if (e && e.ts && Date.now() - e.ts <= 86400000) { baBefore = e.before || null; baAfter = e.after || null; }
+    if (e && e.ts && Date.now() - e.ts <= 86400000 && Array.isArray(e.spots) && e.spots.length) {
+      baSpots = e.spots.map(s => ({ label: s.label || '', before: s.before || null, after: s.after || null }));
+    }
   } catch (e) {}
 }
 function baClear() {
-  baBefore = null; baAfter = null;
+  baSpots = [{ label: '', before: null, after: null }];
   try { const map = JSON.parse(localStorage.getItem(BA_KEY) || '{}'); delete map[currentStore]; localStorage.setItem(BA_KEY, JSON.stringify(map)); } catch (e) {}
-  renderBaPreviews();
+  renderBaSpots();
   showToast('Before/After cleared');
 }
 
 function baLoadImg(src) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
-
 function baRoundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-
 function baTag(ctx, x, y, text, bg) {
-  ctx.font = 'bold 26px sans-serif';
-  const w = ctx.measureText(text).width + 28;
-  ctx.fillStyle = bg; baRoundRect(ctx, x, y, w, 40, 8); ctx.fill();
+  ctx.font = 'bold 24px sans-serif';
+  const w = ctx.measureText(text).width + 26;
+  ctx.fillStyle = bg; baRoundRect(ctx, x, y, w, 38, 8); ctx.fill();
   ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  ctx.fillText(text, x + 14, y + 21);
+  ctx.fillText(text, x + 13, y + 20);
+}
+
+// build ONE before/after image for a single spot (full size, clear)
+function baBuildSpotImage(item) {
+  return new Promise((resolve, reject) => {
+    try {
+      const b = item.b, a = item.a;
+      const colW = 620, gap = 8, headerH = item.label ? 108 : 86;
+      const bh = Math.round(b.height * colW / b.width);
+      const ah = Math.round(a.height * colW / a.width);
+      const ph = Math.max(bh, ah);
+      const W = colW * 2 + gap, H = headerH + ph;
+      const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      const ctx = cv.getContext('2d');
+      ctx.fillStyle = '#0f2a3d'; ctx.fillRect(0, 0, W, headerH);
+      ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+      ctx.fillStyle = '#4aa3df'; ctx.font = 'bold 34px sans-serif'; ctx.fillText('GRAVITY', 22, 44);
+      ctx.fillStyle = '#cfe6f5'; ctx.font = '18px sans-serif'; ctx.fillText('Shelf — Before / After', 22, 70);
+      if (item.label) { ctx.fillStyle = '#bfe0f2'; ctx.font = 'bold 22px sans-serif'; ctx.fillText(item.label, 22, 98); }
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#ffffff'; ctx.font = 'bold 22px sans-serif'; ctx.fillText(currentStore || '', W - 22, 44);
+      ctx.fillStyle = '#9fc4dd'; ctx.font = '18px sans-serif'; ctx.fillText(fmtTime(new Date()), W - 22, 70);
+      ctx.fillStyle = '#000'; ctx.fillRect(0, headerH, W, ph);
+      ctx.drawImage(b, 0, headerH, colW, bh);
+      ctx.drawImage(a, colW + gap, headerH, colW, ah);
+      baTag(ctx, 14, headerH + 14, 'BEFORE', '#d32f2f');
+      baTag(ctx, colW + gap + 14, headerH + 14, 'AFTER', '#2e7d32');
+      cv.toBlob(blob => resolve(blob), 'image/jpeg', 0.9);
+    } catch (e) { reject(e); }
+  });
 }
 
 async function shareBeforeAfter() {
-  if (!baBefore || !baAfter) { showToast('Add both Before and After'); return; }
+  const spots = baSpots.filter(s => s.before && s.after);
+  if (!spots.length) { showToast('Add at least one Before + After'); return; }
   try {
-    const [b, a] = await Promise.all([baLoadImg(baBefore), baLoadImg(baAfter)]);
-    const colW = 620, gap = 8, headerH = 104;
-    const bh = Math.round(b.height * colW / b.width);
-    const ah = Math.round(a.height * colW / a.width);
-    const photoH = Math.max(bh, ah);
-    const W = colW * 2 + gap, H = headerH + photoH;
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-    const ctx = cv.getContext('2d');
-    // header
-    ctx.fillStyle = '#0f2a3d'; ctx.fillRect(0, 0, W, headerH);
-    ctx.fillStyle = '#4aa3df'; ctx.font = 'bold 34px sans-serif'; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
-    ctx.fillText('GRAVITY', 22, 44);
-    ctx.fillStyle = '#cfe6f5'; ctx.font = '19px sans-serif';
-    ctx.fillText('Shelf — Before / After', 22, 74);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 22px sans-serif';
-    ctx.fillText(currentStore || '', W - 22, 44);
-    ctx.fillStyle = '#9fc4dd'; ctx.font = '18px sans-serif';
-    ctx.fillText(fmtTime(new Date()), W - 22, 74);
-    // photo area bg
-    ctx.fillStyle = '#000'; ctx.fillRect(0, headerH, W, photoH);
-    ctx.drawImage(b, 0, headerH, colW, bh);
-    ctx.drawImage(a, colW + gap, headerH, colW, ah);
-    // labels
-    baTag(ctx, 14, headerH + 14, 'BEFORE', '#d32f2f');
-    baTag(ctx, colW + gap + 14, headerH + 14, 'AFTER', '#2e7d32');
-
-    cv.toBlob(async (blob) => {
-      const file = new File([blob], 'gravity_before_after.jpg', { type: 'image/jpeg' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ files: [file], title: 'Gravity Before/After', text: (currentStore || '') + ' — Before/After' }); }
-        catch (e) {}
-      } else {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a'); link.href = url; link.download = 'gravity_before_after.jpg';
-        document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
-        showToast('Image saved — attach it in WhatsApp');
-      }
-    }, 'image/jpeg', 0.9);
-  } catch (e) { showToast('Could not build image'); }
+    const items = await Promise.all(spots.map(async s => ({ label: (s.label || '').trim(), b: await baLoadImg(s.before), a: await baLoadImg(s.after) })));
+    const blobs = await Promise.all(items.map(it => baBuildSpotImage(it)));
+    const files = blobs.map((blob, i) => {
+      const nm = (items[i].label || ('spot' + (i + 1))).replace(/[^a-z0-9]+/gi, '_').toLowerCase();
+      return new File([blob], 'gravity_' + nm + '.jpg', { type: 'image/jpeg' });
+    });
+    if (navigator.canShare && navigator.canShare({ files })) {
+      try { await navigator.share({ files, title: 'Gravity Before/After', text: (currentStore || '') + ' — Before/After' }); } catch (e) {}
+    } else {
+      // desktop fallback — download each image
+      files.forEach((file) => {
+        const url = URL.createObjectURL(file);
+        const link = document.createElement('a'); link.href = url; link.download = file.name;
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+      });
+      showToast(files.length > 1 ? (files.length + ' images saved — attach them in WhatsApp') : 'Image saved — attach it in WhatsApp');
+    }
+  } catch (e) { showToast('Could not build images'); }
 }
 
 // active list refresh — statuses/qty නැති නොවී update list එක ගන්නවා (lists දෙකම සලකනවා)
