@@ -548,14 +548,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <input type="text" id="ord-search" class="login-select" placeholder="🔍 Search..." autocomplete="off" oninput="renderOrdSearch()" style="margin-bottom:6px;">
   <div class="le-search-result" id="ord-search-result"></div>
 
-  <div id="ord-manual-wrap" style="display:none;background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:12px;margin-top:10px;">
+  <div id="ord-manual-wrap" style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:12px;margin-top:10px;">
     <div style="font-size:12px;color:#888;margin-bottom:8px;" id="ord-manual-title">✍ List එකේ නැද්ද? අතින් type කරන්න</div>
-    <input type="text" id="ord-manual-name" class="login-select" placeholder="Item name" autocomplete="off" style="margin-bottom:8px;">
-    <button onclick="ordAddManual()" style="width:100%;background:#c8f04c;color:#0f0f0f;border:none;border-radius:10px;padding:11px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px;" id="ord-manual-btn">Add to order</button>
+    <div style="display:flex;gap:8px;">
+      <input type="text" id="ord-manual-name" class="login-select" placeholder="Item name" autocomplete="off" style="flex:1;margin-bottom:0;">
+      <button onclick="ordAddManual()" style="background:#c8f04c;color:#0f0f0f;border:none;border-radius:10px;padding:0 16px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px;white-space:nowrap;" id="ord-manual-btn">+ Add</button>
+    </div>
   </div>
 
   <div class="ord-count" id="ord-count"></div>
   <div id="ord-list"></div>
+
+  <div style="margin-top:16px;">
+    <div style="font-size:12px;color:#888;margin-bottom:6px;" id="ord-note-label">📝 Note (optional)</div>
+    <textarea id="ord-note" rows="2" class="login-select" placeholder="Any note for this order…" style="width:100%;resize:vertical;font-family:inherit;"></textarea>
+  </div>
 
   <button class="btn-full btn-green" id="ord-submit" onclick="submitOrder()" style="margin-top:16px;">📤 Submit & WhatsApp Share</button>
   <button class="btn-full btn-dark" id="ord-copy" onclick="copyOrder()" style="font-size:13px;">📋 Copy Order</button>
@@ -606,7 +613,7 @@ si: {
   expQtyPh:'කීයක්?', expQtyUnit:'ක්', remClear:'බලලා ඉවරයි — clear කරන්න',
   btnOrder:'🛒 Quick Order', ordTitle:'Quick Order', ordAddTitle:'➕ Order එකට item එකක්',
   ordCount:'Order එකේ items {}ක්', ordEmpty:'තාම items නැහැ — උඩින් search කරලා add කරන්න',
-  ordSubmitted:'✅ Order එක manager ට යැව්වා!', ordManualTitle:'✍ List එකේ නැද්ද? අතින් type කරන්න',
+  ordSubmitted:'✅ Order එක manager ට යැව්වා!', ordManualTitle:'✍ List එකේ නැද්ද? අතින් type කරලා + Add', ordNoteLabel:'📝 Note (ඕනෑ නම්)', ordNotePh:'මේ order එකට note එකක්…',
   editBanner:'✏️ Edit mode — item එකක් ✕ එකෙන් අයින් කරන්න, උඩින් search කරලා add කරන්න. වෙනස්කම් මේ outlet එකට save වෙනවා.', eabTitle:'➕ මේ outlet එකට item එකක් add කරන්න',
   lblGravityPreview:'🥥 Gravity Report (වෙනම message එකක්)', btnShareGravity:'🥥 Gravity Report යවන්න', btnCopyGravity:'📋 Gravity Report Copy',
   bsBanner:'📦 Back store stock — item එකකට back store එකේ තියෙන box ගාණ type කරන්න. ඒක Gravity dashboard එකේ පෙන්නනවා.', bsUnit:'boxes'
@@ -651,7 +658,7 @@ ta: {
   expQtyPh:'எத்தனை?', expQtyUnit:'', remClear:'பார்த்து முடிந்தது — clear செய்யவும்',
   btnOrder:'🛒 விரைவு Order', ordTitle:'விரைவு Order', ordAddTitle:'➕ Order-க்கு item சேர்க்க',
   ordCount:'Order-இல் {} items', ordEmpty:'இன்னும் items இல்லை — மேலே search செய்து add செய்யவும்',
-  ordSubmitted:'✅ Order manager-க்கு அனுப்பப்பட்டது!', ordManualTitle:'✍ List-இல் இல்லையா? கையால் type செய்யவும்',
+  ordSubmitted:'✅ Order manager-க்கு அனுப்பப்பட்டது!', ordManualTitle:'✍ List-இல் இல்லையா? கையால் type செய்து + Add', ordNoteLabel:'📝 Note (விரும்பினால்)', ordNotePh:'இந்த order-க்கு note…',
   editBanner:'✏️ Edit mode — item-ஐ ✕ மூலம் நீக்கவும், மேலே search செய்து add செய்யவும். மாற்றங்கள் இந்த outlet-க்கு save ஆகும்.', eabTitle:'➕ இந்த outlet-க்கு item சேர்க்க',
   lblGravityPreview:'🥥 Gravity Report (தனி message)', btnShareGravity:'🥥 Gravity Report அனுப்பு', btnCopyGravity:'📋 Gravity Report Copy',
   bsBanner:'📦 Back store stock — ஒவ்வொரு item-க்கும் back store-இல் உள்ள box எண்ணிக்கையை type செய்யவும். இது Gravity dashboard-இல் காட்டப்படும்.', bsUnit:'boxes'
@@ -696,7 +703,7 @@ en: {
   expQtyPh:'Qty?', expQtyUnit:'', remClear:'Checked — clear it',
   btnOrder:'🛒 Quick Order', ordTitle:'Quick Order', ordAddTitle:'➕ Add item to order',
   ordCount:'{} items in order', ordEmpty:'No items yet — search above and add',
-  ordSubmitted:'✅ Order sent to manager!', ordManualTitle:'✍ Not in the list? Type it manually',
+  ordSubmitted:'✅ Order sent to manager!', ordManualTitle:'✍ Not in the list? Type it &amp; + Add', ordNoteLabel:'📝 Note (optional)', ordNotePh:'Any note for this order…',
   editBanner:'✏️ Edit mode — tap ✕ to remove an item, or search above to add. Changes are saved for this outlet.', eabTitle:'➕ Add an item to this outlet',
   lblGravityPreview:'🥥 Gravity Report (separate message)', btnShareGravity:'🥥 Share Gravity Report', btnCopyGravity:'📋 Copy Gravity Report',
   bsBanner:'📦 Back store stock — type how many boxes are in the back store for each item. Shown in the Gravity dashboard.', bsUnit:'boxes'
@@ -752,6 +759,7 @@ function applyLang() {
   if (editMode) { const eb = document.getElementById('edit-mode-banner'); if (eb) eb.textContent = t('editBanner'); }
   T('btn-order','btnOrder'); T('ord-title','ordTitle'); T('ord-add-title','ordAddTitle');
   T('ord-manual-title','ordManualTitle'); P('ord-search','leSearchPh'); P('ord-manual-name','leManualPh');
+  T('ord-note-label','ordNoteLabel'); P('ord-note','ordNotePh');
   const ordOL = document.getElementById('ord-outlet-label'); if (ordOL) ordOL.textContent = t('leOutlet');
   const ordLL = document.getElementById('ord-loc-label'); if (ordLL) ordLL.textContent = 'Location';
   T('btn-listedit','btnListEdit'); T('le-title','leTitle'); T('le-outlet-label','leOutlet');
@@ -1169,7 +1177,7 @@ function openOrder() {
   document.getElementById('ord-search').value = '';
   document.getElementById('ord-manual-name').value = '';
   document.getElementById('ord-search-result').innerHTML = '';
-  document.getElementById('ord-manual-wrap').style.display = 'none';
+  const on = document.getElementById('ord-note'); if (on) on.value = '';
   ordRefreshLoc();
   renderOrder();
 }
@@ -1186,7 +1194,7 @@ function renderOrdSearch() {
   const term = document.getElementById('ord-search').value.trim().toLowerCase();
   const box = document.getElementById('ord-search-result');
   const manual = document.getElementById('ord-manual-wrap');
-  if (!term) { box.innerHTML = ''; manual.style.display = 'none'; return; }
+  if (!term) { box.innerHTML = ''; document.getElementById('ord-manual-name').placeholder = t('leManualPh') || 'Item name'; return; }
   const inOrder = new Set(orderItems.map(p => p.code));
   const matches = masterItemList().filter(p => p.name.toLowerCase().includes(term)).slice(0, 30);
   box.innerHTML = matches.map(p => {
@@ -1196,7 +1204,6 @@ function renderOrdSearch() {
       <div class="sr-add">${has ? '✓' : '＋'}</div>
     </div>`;
   }).join('');
-  manual.style.display = 'block';
   document.getElementById('ord-manual-name').placeholder = '"' + document.getElementById('ord-search').value.trim() + '"';
 }
 
@@ -1206,7 +1213,6 @@ function ordAdd(code) {
   if (!orderItems.some(p => p.code === code)) orderItems.push({ code: m.code, name: m.name, qty: 1 });
   document.getElementById('ord-search').value = '';
   document.getElementById('ord-search-result').innerHTML = '';
-  document.getElementById('ord-manual-wrap').style.display = 'none';
   renderOrder();
 }
 
@@ -1216,6 +1222,7 @@ function ordAddManual() {
   const code = 'C' + Date.now();
   orderItems.push({ code, name, qty: 1 });
   document.getElementById('ord-manual-name').value = '';
+  document.getElementById('ord-manual-name').placeholder = t('leManualPh') || 'Item name';
   document.getElementById('ord-search').value = '';
   document.getElementById('ord-search-result').innerHTML = '';
   document.getElementById('ord-manual-wrap').style.display = 'none';
@@ -1272,6 +1279,8 @@ function buildOrderReport() {
   r += `Date: ${fmtTime(now)}\n`;
   r += `━━━━━━━━━━━━━━━━━━━━\n\n`;
   orderItems.forEach((p, i) => { r += `${i+1}. ${p.name} — ${p.qty}\n`; });
+  const note = (document.getElementById('ord-note').value || '').trim();
+  if (note) { r += `\n📝 Note: ${note}\n`; }
   r += `\n━━━━━━━━━━━━━━━━━━━━\n`;
   r += `Total items: ${orderItems.length}`;
   return r;
@@ -1287,7 +1296,8 @@ async function submitOrder() {
     store: ordStoreName(),
     visitStart: new Date().toISOString(),
     orderItems: orderItems.map(p => ({ code: p.code, name: p.name, qty: p.qty })),
-    visitData: { all: { ok: [], low: [], missing: [], expiry: [], competitor: '', notes: '' } }
+    orderNote: (document.getElementById('ord-note').value || '').trim(),
+    visitData: { all: { ok: [], low: [], missing: [], expiry: [], competitor: '', notes: (document.getElementById('ord-note').value || '').trim() } }
   };
   // WhatsApp share
   const text = buildOrderReport();
@@ -1302,6 +1312,7 @@ async function submitOrder() {
     showToast(t('offlineSaved'));
   }
   orderItems = [];
+  document.getElementById('ord-note').value = '';
   document.getElementById('ord-location').value = '';
   renderOrder();
   goTo('s-login');
