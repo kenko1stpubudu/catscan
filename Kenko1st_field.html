@@ -2045,7 +2045,7 @@ async function onBaPhoto(input) {
 }
 
 function baAddSpot() {
-  if (baSpots.length >= 4) { showToast('Up to 4 spots'); return; }
+  if (baSpots.length >= 6) { showToast('Up to 6 spots'); return; }
   baSpots.push({ label: '', before: null, after: null });
   renderBaSpots();
 }
@@ -2074,7 +2074,7 @@ function renderBaSpots() {
       </div>
       <div class="ba-slots">${slot(i, 'before')}${slot(i, 'after')}</div>
     </div>`).join('');
-  const add = document.getElementById('ba-add'); if (add) add.style.display = baSpots.length < 4 ? 'block' : 'none';
+  const add = document.getElementById('ba-add'); if (add) add.style.display = baSpots.length < 6 ? 'block' : 'none';
   const complete = baSpots.filter(s => s.before && s.after).length;
   document.getElementById('ba-share-btn').disabled = complete === 0;
   const clr = document.getElementById('ba-clear'); if (clr) clr.style.display = baSpots.some(s => s.before || s.after || s.label) ? 'inline-block' : 'none';
@@ -2489,7 +2489,7 @@ function buildGravityReport() {
   const gbs = g.filter(p => (gravityBackstock[p.code] || 0) > 0);
   if (gbs.length) {
     r += `📦 BACK STORE STOCK (${gbs.length}):\n`;
-    gbs.forEach(p => r += `  • ${p.name} — ${gravityBackstock[p.code]}\n`);
+    gbs.forEach(p => r += `  • ${p.name} — ${gravityBackstock[p.code]} boxes\n`);
     r += '\n';
   }
 
