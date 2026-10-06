@@ -396,7 +396,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
     </div>
     <button class="ba-share" id="ba-share-btn" onclick="shareBeforeAfter()" disabled>📲 Share Before/After</button>
-    <div class="ba-hint">Both photos combine into one labelled image with the store &amp; date.</div>
+    <div style="text-align:center;"><span class="ba-retake" id="ba-clear" style="display:none;" onclick="baClear()">✕ Clear both</span></div>
+    <div class="ba-hint">Both photos combine into one labelled image with the store &amp; date. Saved on this phone — safe if you close the app; take "Before", come back later for "After".</div>
     <input type="file" accept="image/*" capture="environment" id="ba-in-before" style="display:none" onchange="onBaPhoto('before', this)">
     <input type="file" accept="image/*" capture="environment" id="ba-in-after" style="display:none" onchange="onBaPhoto('after', this)">
   </div>
@@ -1601,6 +1602,7 @@ function startVisit() {
   baMode = false; baBefore = null; baAfter = null;
   const baT0 = document.getElementById('ba-toggle'); if (baT0) baT0.classList.remove('active');
   const baB0 = document.getElementById('ba-box'); if (baB0) baB0.style.display = 'none';
+  baLoad();   // restore any Before/After taken earlier for this outlet
   if (document.getElementById('ba-cap-before')) renderBaPreviews();
   currentList = 'kenko';
   const et = document.getElementById('edit-list-toggle'); if (et) et.classList.remove('active');
@@ -2017,6 +2019,7 @@ async function onBaPhoto(which, input) {
     const url = await baReadScaled(file);
     if (which === 'before') baBefore = url; else baAfter = url;
     renderBaPreviews();
+    baSave();
   } catch (e) { showToast('Could not read photo'); }
   input.value = '';
 }
@@ -2031,6 +2034,33 @@ function renderBaPreviews() {
   setSlot('before', baBefore);
   setSlot('after', baAfter);
   document.getElementById('ba-share-btn').disabled = !(baBefore && baAfter);
+  const clr = document.getElementById('ba-clear'); if (clr) clr.style.display = (baBefore || baAfter) ? 'inline-block' : 'none';
+}
+
+// persist Before/After per outlet (survives app close); pruned after 24h
+const BA_KEY = 'kenko_ba_v1';
+function baSave() {
+  try {
+    let map = JSON.parse(localStorage.getItem(BA_KEY) || '{}');
+    const now = Date.now();
+    Object.keys(map).forEach(k => { if (!map[k] || !map[k].ts || now - map[k].ts > 86400000) delete map[k]; });
+    if (baBefore || baAfter) map[currentStore] = { before: baBefore, after: baAfter, ts: now };
+    else delete map[currentStore];
+    localStorage.setItem(BA_KEY, JSON.stringify(map));
+  } catch (e) { /* quota/parse — stays in memory for this session */ }
+}
+function baLoad() {
+  try {
+    const map = JSON.parse(localStorage.getItem(BA_KEY) || '{}');
+    const e = map[currentStore];
+    if (e && e.ts && Date.now() - e.ts <= 86400000) { baBefore = e.before || null; baAfter = e.after || null; }
+  } catch (e) {}
+}
+function baClear() {
+  baBefore = null; baAfter = null;
+  try { const map = JSON.parse(localStorage.getItem(BA_KEY) || '{}'); delete map[currentStore]; localStorage.setItem(BA_KEY, JSON.stringify(map)); } catch (e) {}
+  renderBaPreviews();
+  showToast('Before/After cleared');
 }
 
 function baLoadImg(src) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
