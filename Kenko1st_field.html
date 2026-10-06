@@ -205,6 +205,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .bs-input:focus { border-color: #4aa3df; }
 .bs-unit { font-size: 11px; color: #789; }
 .bs-has { font-size: 10px; color: #4aa3df; background: rgba(74,163,223,0.12); border-radius: 5px; padding: 1px 6px; margin-left: 6px; }
+.ba-toggle { background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 10px; color: #888; font-family: inherit; font-size: 12px; font-weight: 700; padding: 10px 12px; cursor: pointer; white-space: nowrap; }
+.ba-toggle.active { background: rgba(74,163,223,0.18); color: #4aa3df; border-color: #4aa3df66; }
+.ba-box { background: #161616; border: 1px solid #4aa3df33; border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+.ba-box .ba-title { font-size: 12px; color: #4aa3df; font-weight: 700; margin-bottom: 10px; }
+.ba-slots { display: flex; gap: 10px; }
+.ba-slot { flex: 1; min-width: 0; }
+.ba-slot .ba-cap { width: 100%; border: 1px dashed #3a3a3a; background: #0f0f0f; border-radius: 10px; color: #aaa; font-family: inherit; font-size: 12px; font-weight: 700; padding: 14px 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.ba-slot .ba-cap.has { border-style: solid; padding: 0; overflow: hidden; }
+.ba-slot .ba-cap img { width: 100%; display: block; border-radius: 9px; }
+.ba-slot .ba-lab { font-size: 11px; font-weight: 800; letter-spacing: .05em; margin-bottom: 5px; text-transform: uppercase; }
+.ba-slot.before .ba-lab { color: #ff6b6b; } .ba-slot.after .ba-lab { color: #4caf50; }
+.ba-retake { font-size: 11px; color: #4aa3df; cursor: pointer; margin-top: 5px; display: inline-block; }
+.ba-share { width: 100%; background: #25D366; color: #073; border: none; border-radius: 10px; padding: 12px; font-weight: 800; cursor: pointer; font-family: inherit; font-size: 14px; margin-top: 12px; }
+.ba-share:disabled { background: #2a2a2a; color: #666; cursor: not-allowed; }
+.ba-hint { font-size: 11px; color: #777; margin-top: 8px; text-align: center; }
 .edit-mode-banner { background: rgba(255,140,0,0.1); border: 1px solid #ff8c0044; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #ff8c00; margin-bottom: 10px; }
 .cl-rm { background: rgba(255,82,82,0.14); color: #ff5252; border: none; width: 30px; height: 30px; border-radius: 8px; font-size: 15px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
 .edit-add-box { background: #161616; border: 1px solid #ff8c0033; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
@@ -359,11 +374,32 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <input type="text" id="item-search" placeholder="" autocomplete="off" oninput="searchTerm = this.value; renderChecklist();">
     <button class="filter-btn" id="filter-unchecked" onclick="toggleUncheckedFilter()"></button>
     <button class="bs-toggle" id="backstock-toggle" onclick="toggleBackstock()" style="display:none;">📦</button>
+    <button class="ba-toggle" id="ba-toggle" onclick="toggleBA()" style="display:none;">📸</button>
     <button class="edit-toggle" id="edit-list-toggle" onclick="toggleEditMode()">✏️</button>
   </div>
 
   <div class="edit-mode-banner" id="edit-mode-banner" style="display:none;"></div>
   <div class="bs-banner" id="bs-banner" style="display:none;"></div>
+
+  <div class="ba-box" id="ba-box" style="display:none;">
+    <div class="ba-title">📸 Before / After — one image to WhatsApp</div>
+    <div class="ba-slots">
+      <div class="ba-slot before">
+        <div class="ba-lab">① Before</div>
+        <div class="ba-cap" id="ba-cap-before" onclick="document.getElementById('ba-in-before').click()">📷<span>Tap to add</span></div>
+        <span class="ba-retake" id="ba-re-before" style="display:none;" onclick="document.getElementById('ba-in-before').click()">Retake</span>
+      </div>
+      <div class="ba-slot after">
+        <div class="ba-lab">② After</div>
+        <div class="ba-cap" id="ba-cap-after" onclick="document.getElementById('ba-in-after').click()">📷<span>Tap to add</span></div>
+        <span class="ba-retake" id="ba-re-after" style="display:none;" onclick="document.getElementById('ba-in-after').click()">Retake</span>
+      </div>
+    </div>
+    <button class="ba-share" id="ba-share-btn" onclick="shareBeforeAfter()" disabled>📲 Share Before/After</button>
+    <div class="ba-hint">Both photos combine into one labelled image with the store &amp; date.</div>
+    <input type="file" accept="image/*" capture="environment" id="ba-in-before" style="display:none" onchange="onBaPhoto('before', this)">
+    <input type="file" accept="image/*" capture="environment" id="ba-in-after" style="display:none" onchange="onBaPhoto('after', this)">
+  </div>
 
   <div class="edit-add-box" id="edit-add-box" style="display:none;">
     <div class="eab-title" id="eab-title">➕ Add item to this outlet</div>
@@ -1439,6 +1475,8 @@ function updateListSwitch() {
   // 📦 Back Stock button — Gravity list එකේදී විතරක් පෙන්නනවා
   const bsT = document.getElementById('backstock-toggle');
   if (bsT) bsT.style.display = (currentList === 'gravity') ? '' : 'none';
+  const baT = document.getElementById('ba-toggle');
+  if (baT) baT.style.display = (currentList === 'gravity') ? '' : 'none';
 }
 function switchList(which) {
   if (currentList === which) return;
@@ -1469,6 +1507,8 @@ let uncheckedOnly = false;
 let editMode = false;  // checklist එකේ item edit mode
 let backstockMode = false;    // Gravity back-store stock entry mode
 let gravityBackstock = {};    // { code: qty } — Gravity items වල back store stock
+let baMode = false;           // Before/After panel open
+let baBefore = null, baAfter = null;  // data URLs (in-memory only)
 
 // Stores (localStorage) — v3: outlet names only, location වෙනම type කරනවා
 const OLD_DEFAULTS = ['Spar Kalubovila','Spar Thalawathugoda','Spar Pepilitana','Healthguard Pharmacy','Jeewaka Pharmacy','Kandy','CFC','Ovita','Park Street','Uptown','NW','Shade','Mawella','Diligez'];
@@ -1558,6 +1598,10 @@ function startVisit() {
   editMode = false;
   backstockMode = false;
   gravityBackstock = {};
+  baMode = false; baBefore = null; baAfter = null;
+  const baT0 = document.getElementById('ba-toggle'); if (baT0) baT0.classList.remove('active');
+  const baB0 = document.getElementById('ba-box'); if (baB0) baB0.style.display = 'none';
+  if (document.getElementById('ba-cap-before')) renderBaPreviews();
   currentList = 'kenko';
   const et = document.getElementById('edit-list-toggle'); if (et) et.classList.remove('active');
   const eb = document.getElementById('edit-mode-banner'); if (eb) eb.style.display = 'none';
@@ -1933,6 +1977,117 @@ function setBackstock(code, val) {
   else { gravityBackstock[code] = n; }
   // input focus නැති නොවෙන්න — re-render නැහැ, badge විතරක් update
   saveDraft();
+}
+
+// ===== BEFORE / AFTER PHOTO (Gravity) =====
+function toggleBA() {
+  baMode = !baMode;
+  if (baMode && editMode) { toggleEditMode(); }
+  if (baMode && backstockMode) { toggleBackstock(); }
+  document.getElementById('ba-toggle').classList.toggle('active', baMode);
+  document.getElementById('ba-box').style.display = baMode ? 'block' : 'none';
+}
+
+// read a file, downscale to max 1100px wide, return JPEG data URL
+function baReadScaled(file) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 1100;
+        const scale = Math.min(1, maxW / img.width);
+        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = reject;
+      img.src = fr.result;
+    };
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+
+async function onBaPhoto(which, input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  try {
+    const url = await baReadScaled(file);
+    if (which === 'before') baBefore = url; else baAfter = url;
+    renderBaPreviews();
+  } catch (e) { showToast('Could not read photo'); }
+  input.value = '';
+}
+
+function renderBaPreviews() {
+  const setSlot = (which, url) => {
+    const cap = document.getElementById('ba-cap-' + which);
+    const re = document.getElementById('ba-re-' + which);
+    if (url) { cap.classList.add('has'); cap.innerHTML = `<img src="${url}" alt="">`; re.style.display = 'inline-block'; }
+    else { cap.classList.remove('has'); cap.innerHTML = '📷<span>Tap to add</span>'; re.style.display = 'none'; }
+  };
+  setSlot('before', baBefore);
+  setSlot('after', baAfter);
+  document.getElementById('ba-share-btn').disabled = !(baBefore && baAfter);
+}
+
+function baLoadImg(src) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+
+function baRoundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+function baTag(ctx, x, y, text, bg) {
+  ctx.font = 'bold 26px sans-serif';
+  const w = ctx.measureText(text).width + 28;
+  ctx.fillStyle = bg; baRoundRect(ctx, x, y, w, 40, 8); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  ctx.fillText(text, x + 14, y + 21);
+}
+
+async function shareBeforeAfter() {
+  if (!baBefore || !baAfter) { showToast('Add both Before and After'); return; }
+  try {
+    const [b, a] = await Promise.all([baLoadImg(baBefore), baLoadImg(baAfter)]);
+    const colW = 620, gap = 8, headerH = 104;
+    const bh = Math.round(b.height * colW / b.width);
+    const ah = Math.round(a.height * colW / a.width);
+    const photoH = Math.max(bh, ah);
+    const W = colW * 2 + gap, H = headerH + photoH;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    // header
+    ctx.fillStyle = '#0f2a3d'; ctx.fillRect(0, 0, W, headerH);
+    ctx.fillStyle = '#4aa3df'; ctx.font = 'bold 34px sans-serif'; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+    ctx.fillText('GRAVITY', 22, 44);
+    ctx.fillStyle = '#cfe6f5'; ctx.font = '19px sans-serif';
+    ctx.fillText('Shelf — Before / After', 22, 74);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 22px sans-serif';
+    ctx.fillText(currentStore || '', W - 22, 44);
+    ctx.fillStyle = '#9fc4dd'; ctx.font = '18px sans-serif';
+    ctx.fillText(fmtTime(new Date()), W - 22, 74);
+    // photo area bg
+    ctx.fillStyle = '#000'; ctx.fillRect(0, headerH, W, photoH);
+    ctx.drawImage(b, 0, headerH, colW, bh);
+    ctx.drawImage(a, colW + gap, headerH, colW, ah);
+    // labels
+    baTag(ctx, 14, headerH + 14, 'BEFORE', '#d32f2f');
+    baTag(ctx, colW + gap + 14, headerH + 14, 'AFTER', '#2e7d32');
+
+    cv.toBlob(async (blob) => {
+      const file = new File([blob], 'gravity_before_after.jpg', { type: 'image/jpeg' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: 'Gravity Before/After', text: (currentStore || '') + ' — Before/After' }); }
+        catch (e) {}
+      } else {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a'); link.href = url; link.download = 'gravity_before_after.jpg';
+        document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
+        showToast('Image saved — attach it in WhatsApp');
+      }
+    }, 'image/jpeg', 0.9);
+  } catch (e) { showToast('Could not build image'); }
 }
 
 // active list refresh — statuses/qty නැති නොවී update list එක ගන්නවා (lists දෙකම සලකනවා)
