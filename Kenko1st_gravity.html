@@ -319,7 +319,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
   <div class="export-panel" id="export-panel" style="display:none;">
     <h3>📥 Gravity Stock Sheet (Excel)</h3>
-    <div class="sub">From–To date range + outlet → stock matrix (✓ / LOW / 0). Each cell also shows back-store qty like (5). BACK column = total units in back store.</div>
+    <div class="sub">From–To date range + outlet → stock matrix (✓ / LOW / 0). Each cell also shows back-store qty like (5). BACK column = total boxes in back store.</div>
     <div class="exp-controls">
       <span class="exp-range-lbl">From</span>
       <input type="date" id="exp-date-from">
@@ -604,7 +604,7 @@ function openModal(v) {
   const bstock = sec.backstock || [];
   if (bstock.length) {
     body += `<div class="avail-section"><h3>📦 Back Store Stock (${bstock.length})</h3>` +
-      bstock.map(p => `<div class="avail-row"><span class="avail-name">${p.name}</span><span class="avail-qty bs">${p.qty} units</span></div>`).join('') + `</div>`;
+      bstock.map(p => `<div class="avail-row"><span class="avail-name">${p.name}</span><span class="avail-qty bs">${p.qty} boxes</span></div>`).join('') + `</div>`;
   }
   window._modalVisit = v;
   if (ADMIN) body += `<button class="clear-btn modal-clear" onclick="clearGravityVisit(window._modalVisit)">🗑 Delete this visit</button>`;
