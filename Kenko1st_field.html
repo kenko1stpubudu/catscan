@@ -394,7 +394,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <button class="ba-share" id="ba-share-btn" onclick="shareBeforeAfter()" disabled>📲 Share Before/After</button>
     <div style="text-align:center;"><span class="ba-retake" id="ba-clear" style="display:none;" onclick="baClear()">✕ Clear all</span></div>
     <div class="ba-hint">Add a spot for each shelf place (e.g. Coconut Oil, Coconut Sugar). Each becomes its own clear labelled photo; all are sent together in one share. Saved on this phone — safe if you close the app.</div>
-    <input type="file" accept="image/*" capture="environment" id="ba-input" style="display:none" onchange="onBaPhoto(this)">
+    <input type="file" accept="image/*" id="ba-input" style="display:none" onchange="onBaPhoto(this)">
   </div>
 
   <div class="edit-add-box" id="edit-add-box" style="display:none;">
@@ -609,7 +609,7 @@ si: {
   ordSubmitted:'✅ Order එක manager ට යැව්වා!', ordManualTitle:'✍ List එකේ නැද්ද? අතින් type කරන්න',
   editBanner:'✏️ Edit mode — item එකක් ✕ එකෙන් අයින් කරන්න, උඩින් search කරලා add කරන්න. වෙනස්කම් මේ outlet එකට save වෙනවා.', eabTitle:'➕ මේ outlet එකට item එකක් add කරන්න',
   lblGravityPreview:'🥥 Gravity Report (වෙනම message එකක්)', btnShareGravity:'🥥 Gravity Report යවන්න', btnCopyGravity:'📋 Gravity Report Copy',
-  bsBanner:'📦 Back store stock — item එකකට back store එකේ තියෙන ගාණ type කරන්න. ඒක Gravity dashboard එකේ පෙන්නනවා.', bsUnit:'units'
+  bsBanner:'📦 Back store stock — item එකකට back store එකේ තියෙන box ගාණ type කරන්න. ඒක Gravity dashboard එකේ පෙන්නනවා.', bsUnit:'boxes'
 },
 ta: {
   lblRep:'பிரதிநிதி பெயர்', selectRep:'-- Rep தேர்வு செய்க --', lblStore:'கடை (Store)', selectStore:'-- Store தேர்வு செய்க --',
@@ -654,7 +654,7 @@ ta: {
   ordSubmitted:'✅ Order manager-க்கு அனுப்பப்பட்டது!', ordManualTitle:'✍ List-இல் இல்லையா? கையால் type செய்யவும்',
   editBanner:'✏️ Edit mode — item-ஐ ✕ மூலம் நீக்கவும், மேலே search செய்து add செய்யவும். மாற்றங்கள் இந்த outlet-க்கு save ஆகும்.', eabTitle:'➕ இந்த outlet-க்கு item சேர்க்க',
   lblGravityPreview:'🥥 Gravity Report (தனி message)', btnShareGravity:'🥥 Gravity Report அனுப்பு', btnCopyGravity:'📋 Gravity Report Copy',
-  bsBanner:'📦 Back store stock — ஒவ்வொரு item-க்கும் back store-இல் உள்ள எண்ணிக்கையை type செய்யவும். இது Gravity dashboard-இல் காட்டப்படும்.', bsUnit:'units'
+  bsBanner:'📦 Back store stock — ஒவ்வொரு item-க்கும் back store-இல் உள்ள box எண்ணிக்கையை type செய்யவும். இது Gravity dashboard-இல் காட்டப்படும்.', bsUnit:'boxes'
 },
 en: {
   lblRep:'Rep Name', selectRep:'-- Select Rep --', lblStore:'Store', selectStore:'-- Select Store --',
@@ -699,7 +699,7 @@ en: {
   ordSubmitted:'✅ Order sent to manager!', ordManualTitle:'✍ Not in the list? Type it manually',
   editBanner:'✏️ Edit mode — tap ✕ to remove an item, or search above to add. Changes are saved for this outlet.', eabTitle:'➕ Add an item to this outlet',
   lblGravityPreview:'🥥 Gravity Report (separate message)', btnShareGravity:'🥥 Share Gravity Report', btnCopyGravity:'📋 Copy Gravity Report',
-  bsBanner:'📦 Back store stock — type how many units are in the back store for each item. Shown in the Gravity dashboard.', bsUnit:'units'
+  bsBanner:'📦 Back store stock — type how many boxes are in the back store for each item. Shown in the Gravity dashboard.', bsUnit:'boxes'
 }
 };
 
@@ -1489,6 +1489,7 @@ function switchList(which) {
     const bt = document.getElementById('backstock-toggle'); if (bt) bt.classList.remove('active');
     const bb = document.getElementById('bs-banner'); if (bb) bb.style.display = 'none';
   }
+  closeBA();
   searchTerm = ''; uncheckedOnly = false;
   const si = document.getElementById('item-search'); if (si) si.value = '';
   const fb = document.getElementById('filter-unchecked'); if (fb) { fb.classList.remove('active'); fb.textContent = t('filterOff'); }
@@ -1928,6 +1929,7 @@ function markRestOk() {
 // ===== IN-VISIT LIST EDIT (edit mode) =====
 function toggleEditMode() {
   editMode = !editMode;
+  if (editMode) closeBA();
   if (editMode && backstockMode) {
     backstockMode = false;
     const bt = document.getElementById('backstock-toggle'); if (bt) bt.classList.remove('active');
@@ -1953,6 +1955,7 @@ function toggleEditMode() {
 // ===== GRAVITY BACK STORE STOCK =====
 function toggleBackstock() {
   backstockMode = !backstockMode;
+  if (backstockMode) closeBA();
   // edit mode එකත් එක්ක එකවර on වෙන්නේ නැහැ
   if (backstockMode && editMode) {
     editMode = false;
@@ -1978,6 +1981,13 @@ function setBackstock(code, val) {
 }
 
 // ===== BEFORE / AFTER PHOTO (Gravity) =====
+function closeBA() {
+  if (!baMode) return;
+  baMode = false;
+  const t = document.getElementById('ba-toggle'); if (t) t.classList.remove('active');
+  const b = document.getElementById('ba-box'); if (b) b.style.display = 'none';
+}
+
 function toggleBA() {
   baMode = !baMode;
   if (baMode && editMode) { toggleEditMode(); }
@@ -2043,7 +2053,7 @@ function renderBaSpots() {
     const url = baSpots[i][which];
     const name = which === 'before' ? 'Before' : 'After';
     return `<div class="ba-slot ${which}"><div class="ba-lab">${which === 'before' ? '①' : '②'} ${name}</div>` +
-      `<div class="ba-cap ${url ? 'has' : ''}" onclick="baCapture(${i},'${which}')">${url ? `<img src="${url}" alt="">` : '📷<span>Tap to add</span>'}</div>` +
+      `<div class="ba-cap ${url ? 'has' : ''}" onclick="baCapture(${i},'${which}')">${url ? `<img src="${url}" alt="">` : '📷<span>Camera / Upload</span>'}</div>` +
       (url ? `<span class="ba-retake" onclick="baCapture(${i},'${which}')">Retake</span>` : '') + `</div>`;
   };
   wrap.innerHTML = baSpots.map((s, i) => `<div class="ba-spot">
