@@ -566,7 +566,7 @@ function renderVisits() {
     const lowHTML = low.length ? `<div class="low-list"><div class="ml-title">🟡 Low Stock (${low.length})</div>${low.map(p => `<div class="ml-item">${p.name}${p.qty ? ' ×' + p.qty : ''}</div>`).join('')}</div>` : '';
     const expHTML = exp.length ? `<div class="exp-list"><div class="ml-title">⏰ Expiry (${exp.length})</div>${exp.map(e => `<div class="ml-item">${e.name} — <span class="exp-dt">${(e.dates || []).map(fmtD).join(', ')}</span></div>`).join('')}</div>` : '';
     const bstock = sec.backstock || [];
-    const bsHTML = bstock.length ? `<div class="bs-list"><div class="ml-title">📦 Back Store (${bstock.length})</div>${bstock.map(p => `<div class="ml-item"><span>${p.name}</span><span class="bs-q">${p.qty}</span></div>`).join('')}</div>` : '';
+    const bsHTML = bstock.length ? `<div class="bs-list"><div class="ml-title">📦 Back Store (${bstock.length})</div>${bstock.map(p => `<div class="ml-item"><span>${p.name}</span><span class="bs-q">${p.qty} boxes</span></div>`).join('')}</div>` : '';
 
     const cardCls = miss.length ? 'has-missing' : (low.length ? 'has-low' : 'all-ok');
     const badge = miss.length
@@ -1046,7 +1046,7 @@ function reportBackStore() {
   if (!rows.length) { openReport('📦 Back Store', html + '<div class="rep-empty">No back-store quantities recorded yet.</div>'); return; }
   html += '<table class="rep-table"><thead><tr><th>Item</th><th>Outlet</th><th class="num">In back</th><th class="num">Shelf</th></tr></thead><tbody>';
   rows.forEach(r => {
-    html += `<tr><td>${r.name}</td><td style="color:#889">🏪 ${r.store}</td><td class="num" style="color:#1f7bb6">${r.qty}</td><td class="num"><span class="rep-badge ${r.cls}">${r.label}</span></td></tr>`;
+    html += `<tr><td>${r.name}</td><td style="color:#889">🏪 ${r.store}</td><td class="num" style="color:#1f7bb6">${r.qty} boxes</td><td class="num"><span class="rep-badge ${r.cls}">${r.label}</span></td></tr>`;
   });
   html += '</tbody></table>';
   openReport('📦 Back Store', html);
