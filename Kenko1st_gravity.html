@@ -453,25 +453,40 @@ function latestPerStore() {
   return map;
 }
 
+// code -> current name (newest visit wins). Merges old/new names of the same barcode.
+function nameByCode() {
+  const map = {};
+  allVisits.slice().sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt)).forEach(v => {
+    const sec = gravSec(v); if (!sec) return;
+    [...(sec.ok || []), ...(sec.low || []), ...(sec.missing || []), ...(sec.backstock || [])].forEach(p => {
+      if (p.code && !map[p.code]) map[p.code] = (p.name || '').replace(' (LOW STOCK)', '');
+    });
+  });
+  return map;
+}
+
 function renderAttention() {
   const panel = document.getElementById('attn');
   const body = document.getElementById('attn-body');
   const latest = latestPerStore();
-  // item name -> { missing:[stores], low:[stores] }
+  const nm = nameByCode();
+  // item CODE -> { name, missing:[stores], low:[stores] } (merges old/new names of same barcode)
   const agg = {};
   Object.values(latest).forEach(v => {
     const sec = gravSec(v);
     (sec.missing || []).forEach(p => {
-      agg[p.name] = agg[p.name] || { missing: [], low: [] };
-      agg[p.name].missing.push(v.store);
+      const key = p.code || p.name;
+      agg[key] = agg[key] || { name: nm[p.code] || (p.name || '').replace(' (LOW STOCK)', ''), missing: [], low: [] };
+      agg[key].missing.push(v.store);
     });
     (sec.low || []).forEach(p => {
-      agg[p.name] = agg[p.name] || { missing: [], low: [] };
-      agg[p.name].low.push(v.store);
+      const key = p.code || p.name;
+      agg[key] = agg[key] || { name: nm[p.code] || (p.name || '').replace(' (LOW STOCK)', ''), missing: [], low: [] };
+      agg[key].low.push(v.store);
     });
   });
-  const rows = Object.entries(agg)
-    .map(([name, d]) => ({ name, miss: d.missing, low: d.low, total: d.missing.length + d.low.length }))
+  const rows = Object.values(agg)
+    .map(d => ({ name: d.name, miss: d.missing, low: d.low, total: d.missing.length + d.low.length }))
     .sort((a, b) => b.miss.length - a.miss.length || b.total - a.total);
 
   if (!Object.keys(latest).length) { panel.style.display = 'none'; return; }
@@ -990,13 +1005,14 @@ function reportCoverage() {
 // 📈 Problem Items — Gravity items missing/low across outlets
 function reportTrends() {
   const m = latestPerStore();
+  const nm = nameByCode();
   const agg = {};
   Object.values(m).forEach(v => {
     const sec = gravSec(v); if (!sec) return;
-    (sec.missing || []).forEach(p => { const n = (p.name || '').replace(' (LOW STOCK)', ''); (agg[n] = agg[n] || { miss: new Set(), low: new Set() }).miss.add(v.store); });
-    (sec.low || []).forEach(p => { const n = (p.name || '').replace(' (LOW STOCK)', ''); (agg[n] = agg[n] || { miss: new Set(), low: new Set() }).low.add(v.store); });
+    (sec.missing || []).forEach(p => { const k = p.code || p.name; (agg[k] = agg[k] || { name: nm[p.code] || (p.name || '').replace(' (LOW STOCK)', ''), miss: new Set(), low: new Set() }).miss.add(v.store); });
+    (sec.low || []).forEach(p => { const k = p.code || p.name; (agg[k] = agg[k] || { name: nm[p.code] || (p.name || '').replace(' (LOW STOCK)', ''), miss: new Set(), low: new Set() }).low.add(v.store); });
   });
-  const rows = Object.entries(agg).map(([name, d]) => ({ name, miss: d.miss.size, low: d.low.size })).filter(r => r.miss + r.low > 0).sort((a, b) => b.miss - a.miss || b.low - a.low);
+  const rows = Object.values(agg).map(d => ({ name: d.name, miss: d.miss.size, low: d.low.size })).filter(r => r.miss + r.low > 0).sort((a, b) => b.miss - a.miss || b.low - a.low);
   const systemic = rows.filter(r => r.miss >= 2).length;
   let html = `<div class="rep-sub">Gravity items currently missing or low, and at how many outlets. Items missing at 2+ outlets may be a supply issue. ${systemic ? `<b style="color:#c62828">${systemic} item(s) missing at 2+ outlets.</b>` : ''}</div>`;
   if (!rows.length) { openReport('📈 Problem Items', html + '<div class="rep-empty">✅ Nothing missing or low right now.</div>'); return; }
