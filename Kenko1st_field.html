@@ -2466,6 +2466,7 @@ function buildGravityReport() {
   const g = gravityItems();
   const gok = statusItems('ok', g), glow = statusItems('low', g), gmiss = statusItems('miss', g);
   const gexp = g.map(p => ({ p, entries: getItemExpiry(p.code) })).filter(e => e.entries.length);
+  const lbl = p => `${p.code} — ${p.name}`;
   const qtyStr = p => itemQty[p.code] ? ` ×${itemQty[p.code]}` : '';
 
   let r = `🥥 GRAVITY SHELF REPORT\n`;
@@ -2475,21 +2476,21 @@ function buildGravityReport() {
   r += `Date: ${fmtTime(now)}\n`;
   r += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-  if (gok.length) { r += `✅ AVAILABLE (${gok.length}):\n`; gok.forEach(p => r += `  • ${p.name}${qtyStr(p)}\n`); r += '\n'; }
-  if (glow.length) { r += `🟡 LOW STOCK (${glow.length}):\n`; glow.forEach(p => r += `  • ${p.name}${qtyStr(p)}\n`); r += '\n'; }
-  if (gmiss.length) { r += `🔴 MISSING (${gmiss.length}):\n`; gmiss.forEach(p => r += `  • ${p.name}\n`); r += '\n'; }
+  if (gok.length) { r += `✅ AVAILABLE (${gok.length}):\n`; gok.forEach(p => r += `  • ${lbl(p)}${qtyStr(p)}\n`); r += '\n'; }
+  if (glow.length) { r += `🟡 LOW STOCK (${glow.length}):\n`; glow.forEach(p => r += `  • ${lbl(p)}${qtyStr(p)}\n`); r += '\n'; }
+  if (gmiss.length) { r += `🔴 MISSING (${gmiss.length}):\n`; gmiss.forEach(p => r += `  • ${lbl(p)}\n`); r += '\n'; }
   if (gexp.length) {
     r += `⏰ EXPIRY DATES (${gexp.length}):\n`;
     gexp.forEach(e => {
       const ds = e.entries.map(x => fmtDate(x.date) + (x.qty ? ` (${x.qty})` : '') + (isExpired(x.date) ? ' ⚠EXPIRED' : isExpiringSoon(x.date) ? ' ⚠' : '')).join(', ');
-      r += `  • ${e.p.name} — ${ds}\n`;
+      r += `  • ${lbl(e.p)} — ${ds}\n`;
     });
     r += '\n';
   }
   const gbs = g.filter(p => (gravityBackstock[p.code] || 0) > 0);
   if (gbs.length) {
     r += `📦 BACK STORE STOCK (${gbs.length}):\n`;
-    gbs.forEach(p => r += `  • ${p.name} — ${gravityBackstock[p.code]} boxes\n`);
+    gbs.forEach(p => r += `  • ${lbl(p)} — ${gravityBackstock[p.code]} boxes\n`);
     r += '\n';
   }
 
