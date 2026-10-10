@@ -1266,7 +1266,7 @@ function renderOrder() {
 
 function ordStoreName() {
   const store = document.getElementById('ord-outlet').value;
-  const loc = document.getElementById('ord-location').value.trim();
+  const loc = canonLocation(store, document.getElementById('ord-location').value);
   return loc ? store + ' - ' + loc : store;
 }
 
@@ -1585,10 +1585,22 @@ function populateStoreSelect() {
   });
 }
 
+function canonLocation(base, loc) {
+  loc = (loc || '').replace(/\s+/g, ' ').trim();
+  if (!loc) return '';
+  const sugg = SUGGESTED_LOCATIONS[getStoreType(base)] || [];
+  const l = loc.toLowerCase();
+  let hit = sugg.find(x => x.toLowerCase() === l);
+  if (!hit && l.length >= 3) { const m = sugg.filter(x => x.toLowerCase().startsWith(l)); if (m.length === 1) hit = m[0]; }
+  if (!hit) { try { hit = learnedLocations(base).find(x => x.toLowerCase() === l); } catch (e) {} }
+  if (!hit) hit = loc.split(' ').map(w => w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w).join(' ');
+  return hit;
+}
+
 function startVisit() {
   const rep = document.getElementById('rep-select').value;
   const store = document.getElementById('store-select').value;
-  const loc = document.getElementById('store-location').value.trim();
+  const loc = canonLocation(store, document.getElementById('store-location').value);
   const errEl = document.getElementById('login-err');
   if (!rep || !store) { errEl.style.display = 'block'; return; }
   errEl.style.display = 'none';
