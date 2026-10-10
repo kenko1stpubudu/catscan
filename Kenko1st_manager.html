@@ -397,6 +397,22 @@ function showPhoto(src) {
   document.getElementById('photo-full').classList.add('open');
 }
 let allVisits = [];
+// ---- normalize outlet names: "Spar - Union place" == "Spar - Union Place", "Spar - thal" -> Thalawathugoda ----
+const KNOWN_LOCS = { spar: ["Kalubowila","Negombo","Malabe","Pepiliyana","Kelaniya","Seeduwa","Thalawathugoda","Union Place","Wattala"] };
+function canonStore(s) {
+  s = (s || '').replace(/\s+/g, ' ').trim();
+  const i = s.indexOf(' - ');
+  if (i < 0) return s;
+  const base = s.slice(0, i), loc = s.slice(i + 3).trim();
+  if (!loc) return base;
+  const list = KNOWN_LOCS[base.toLowerCase()] || [];
+  const l = loc.toLowerCase();
+  let hit = list.find(x => x.toLowerCase() === l);
+  if (!hit && l.length >= 3) { const m = list.filter(x => x.toLowerCase().startsWith(l)); if (m.length === 1) hit = m[0]; }
+  if (!hit) hit = loc.split(' ').map(w => w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w).join(' ');
+  return base + ' - ' + hit;
+}
+
 let allOrders = [];
 let mainTab = 'visits';
 
@@ -710,7 +726,9 @@ async function loadVisits() {
     if (!Array.isArray(raw)) throw new Error('Invalid response');
     // orders vs visits වෙන් කරනවා
     allOrders = raw.filter(v => v.type === 'order');
+    allOrders.forEach(v => { v.store = canonStore(v.store); });
     allVisits = raw.filter(v => v.type !== 'order');
+    allVisits.forEach(v => { v.store = canonStore(v.store); });
 
     document.getElementById('main-tabs').style.display = allOrders.length ? 'flex' : 'none';
     populateStoreFilter();
