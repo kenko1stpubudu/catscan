@@ -2067,7 +2067,7 @@ function baRemoveSpot(idx) {
   renderBaSpots();
   baSave();
 }
-function baSetLabel(idx, val) { if (baSpots[idx]) { baSpots[idx].label = val; baSave(); } }
+function baSetLabel(idx, val) { if (baSpots[idx]) { baSpots[idx].label = val; baSave(); baPrepareSoon(); } }
 
 function renderBaSpots() {
   const wrap = document.getElementById('ba-spots');
@@ -2088,7 +2088,8 @@ function renderBaSpots() {
     </div>`).join('');
   const add = document.getElementById('ba-add'); if (add) add.style.display = baSpots.length < 6 ? 'block' : 'none';
   const complete = baSpots.filter(s => s.before && s.after).length;
-  document.getElementById('ba-share-btn').disabled = complete === 0;
+  baUpdateBtn();
+  if (complete) baPrepareSoon();
   const clr = document.getElementById('ba-clear'); if (clr) clr.style.display = baSpots.some(s => s.before || s.after || s.label) ? 'inline-block' : 'none';
 }
 
@@ -2161,29 +2162,77 @@ function baBuildSpotImage(item) {
   });
 }
 
-async function shareBeforeAfter() {
+// ---- Before/After share: images are PRE-BUILT in the background so Share fires instantly
+// (Web Share must be called right after the tap; building images after the tap made it fail silently) ----
+let baCache = { key: '', files: null, building: false, token: 0 };
+let baPrepTimer = null;
+
+function baKey() {
+  return (currentStore || '') + '|' + baSpots.filter(s => s.before && s.after)
+    .map(s => (s.label || '') + ':' + s.before.length + ':' + s.after.length + ':' + s.before.slice(-24) + s.after.slice(-24)).join('|');
+}
+
+function baUpdateBtn() {
+  const btn = document.getElementById('ba-share-btn'); if (!btn) return;
+  const complete = baSpots.filter(s => s.before && s.after).length;
+  if (!complete) { btn.disabled = true; btn.textContent = '📲 Share Before/After'; return; }
+  const ready = baCache.files && baCache.key === baKey();
+  btn.disabled = !!baCache.building;
+  btn.textContent = baCache.building ? '⏳ Preparing images…' : (ready ? '📲 Share Before/After' : '📲 Share Before/After');
+}
+
+function baPrepareSoon() {
+  clearTimeout(baPrepTimer);
+  baPrepTimer = setTimeout(baPrepare, 500);
+}
+
+async function baPrepare() {
   const spots = baSpots.filter(s => s.before && s.after);
-  if (!spots.length) { showToast('Add at least one Before + After'); return; }
+  if (!spots.length) { baCache.files = null; baCache.key = ''; baCache.building = false; baUpdateBtn(); return; }
+  const key = baKey();
+  if (baCache.files && baCache.key === key) { baUpdateBtn(); return; }
+  const token = ++baCache.token;
+  baCache.building = true; baUpdateBtn();
   try {
     const items = await Promise.all(spots.map(async s => ({ label: (s.label || '').trim(), b: await baLoadImg(s.before), a: await baLoadImg(s.after) })));
     const blobs = await Promise.all(items.map(it => baBuildSpotImage(it)));
     const files = blobs.map((blob, i) => {
-      const nm = (items[i].label || ('spot' + (i + 1))).replace(/[^a-z0-9]+/gi, '_').toLowerCase();
-      return new File([blob], 'gravity_' + nm + '.jpg', { type: 'image/jpeg' });
+      const nm = (items[i].label || '').replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').toLowerCase();
+      return new File([blob], 'gravity_' + (i + 1) + (nm ? '_' + nm : '') + '.jpg', { type: 'image/jpeg' });
     });
-    if (navigator.canShare && navigator.canShare({ files })) {
-      try { await navigator.share({ files, title: 'Gravity Before/After', text: (currentStore || '') + ' — Before/After' }); } catch (e) {}
-    } else {
-      // desktop fallback — download each image
-      files.forEach((file) => {
-        const url = URL.createObjectURL(file);
-        const link = document.createElement('a'); link.href = url; link.download = file.name;
-        document.body.appendChild(link); link.click(); document.body.removeChild(link);
-        setTimeout(() => URL.revokeObjectURL(url), 1500);
+    if (token === baCache.token && key === baKey()) { baCache.files = files; baCache.key = key; }
+  } catch (e) { baCache.files = null; }
+  if (token === baCache.token) baCache.building = false;
+  baUpdateBtn();
+}
+
+function baDownloadFiles(files) {
+  files.forEach((file) => {
+    const url = URL.createObjectURL(file);
+    const link = document.createElement('a'); link.href = url; link.download = file.name;
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  });
+}
+
+function shareBeforeAfter() {
+  const spots = baSpots.filter(s => s.before && s.after);
+  if (!spots.length) { showToast('Add at least one Before + After'); return; }
+  const ready = baCache.files && baCache.key === baKey();
+  if (!ready) { showToast('Preparing images… tap Share again in a moment'); baPrepare(); return; }
+  const files = baCache.files;
+  // NOTE: no awaits before share() — must run inside the tap
+  if (navigator.canShare && navigator.canShare({ files })) {
+    navigator.share({ files, title: 'Gravity Before/After', text: (currentStore || '') + ' — Before/After' })
+      .catch(e => {
+        if (e && e.name === 'AbortError') return;   // user closed the share sheet
+        baDownloadFiles(files);
+        showToast('Could not open share (' + ((e && e.name) || 'error') + ') — images saved, attach in WhatsApp');
       });
-      showToast(files.length > 1 ? (files.length + ' images saved — attach them in WhatsApp') : 'Image saved — attach it in WhatsApp');
-    }
-  } catch (e) { showToast('Could not build images'); }
+  } else {
+    baDownloadFiles(files);
+    showToast(files.length > 1 ? (files.length + ' images saved — attach them in WhatsApp') : 'Image saved — attach it in WhatsApp');
+  }
 }
 
 // active list refresh — statuses/qty නැති නොවී update list එක ගන්නවා (lists දෙකම සලකනවා)
