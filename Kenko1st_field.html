@@ -126,6 +126,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .le-sr .sr-name { flex: 1; font-size: 13px; min-width: 0; }
 .le-sr .sr-add { color: #c8f04c; font-size: 18px; flex-shrink: 0; }
 .le-sr.exists { opacity: 0.4; }
+.prev-badge { display: inline-block; margin-top: 4px; font-size: 11px; font-weight: 700; color: #ff8c00; background: rgba(255,140,0,0.13); border-radius: 6px; padding: 2px 8px; }
+.prev-badge.low { color: #ffc107; background: rgba(255,193,7,0.12); }
+.sent-title { font-size: 12px; color: #888; margin: 14px 0 6px; }
+.sent-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.sent-chip { font-size: 12px; font-weight: 700; padding: 6px 10px; border-radius: 14px; border: 1px solid; }
+.sent-chip.done { color: #4caf50; border-color: rgba(76,175,80,0.35); background: rgba(76,175,80,0.1); }
+.sent-chip.todo { color: #ffc107; border-color: rgba(255,193,7,0.35); background: rgba(255,193,7,0.08); }
+.sent-chip.opt { color: #999; border-color: #444; }
+.sent-all { font-size: 12px; color: #4caf50; margin-top: 6px; font-weight: 700; }
 
 /* Order screen */
 .ord-item { display: flex; align-items: center; gap: 10px; background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 10px; padding: 10px 12px; margin-bottom: 7px; }
@@ -334,6 +343,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div style="font-size:12px;color:#555;margin-bottom:10px;" id="lbl-manage">⚙ Stores Manage</div>
       <button class="btn-full btn-dark" id="btn-managestores" onclick="goTo('s-manage')" style="font-size:13px;padding:11px;">+ Add / Remove Stores</button>
       <button class="btn-full btn-dark" id="btn-history" onclick="goTo('s-history')" style="font-size:13px;padding:11px;">📖 My Visit History</button>
+<button class="btn-full btn-dark" id="btn-daysum" onclick="goTo('s-daysum')" style="font-size:13px;padding:11px;">Day Summary</button>
       <button class="btn-full btn-dark" id="btn-listedit" onclick="goTo('s-listedit')" style="font-size:13px;padding:11px;">📝 Edit Item Lists</button>
       <button class="btn-full btn-dark" id="btn-order" onclick="goTo('s-order')" style="font-size:13px;padding:11px;">🛒 Quick Order</button>
     </div>
@@ -350,7 +360,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <button class="back-btn" onclick="goTo('s-login')">← Back</button>
   </div>
 
-  <div class="upload-area" id="scan-upload-btn">
+  <div id="prev-banner" style="display:none;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#ccc;line-height:1.5;"></div>
+
+<div class="upload-area" id="scan-upload-btn">
     <div class="icon">📷</div>
     <p id="scan-t1">Shelf Photos Scan (optional)</p>
     <small id="scan-t2"></small>
@@ -438,6 +450,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
   <div id="finish-chips"></div>
 
+<div id="sent-status"></div>
+
   <div style="margin:16px 0 8px;font-size:12px;color:#888;" id="lbl-preview">WhatsApp Report Preview</div>
   <div class="report-box" id="report-preview"></div>
 
@@ -451,7 +465,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <button class="btn-full btn-dark" id="btn-copy-gravity" onclick="copyGravityReport()" style="margin-top:8px;">📋 Copy Gravity Report</button>
   </div>
 
-  <button class="btn-full btn-red" id="btn-new" onclick="newVisit()" style="margin-top:18px;">🔄 New Visit</button>
+  <button class="btn-full" id="btn-order-gaps" onclick="orderFromVisit()" style="display:none;margin-top:18px;background:#ff8c00;color:#0f0f0f;">Order missing + low items</button>
+
+<button class="btn-full btn-red" id="btn-new" onclick="newVisit()" style="margin-top:18px;">🔄 New Visit</button>
+</div>
+
+<!-- SCREEN: DAY SUMMARY -->
+<div class="screen" id="s-daysum">
+<div class="top-bar">
+<h1 id="ds-title">Day Summary</h1>
+<button class="back-btn" onclick="goTo('s-login')">← Back</button>
+</div>
+
+<div class="login-label" id="ds-date-label">Date</div>
+<input type="date" id="ds-date" class="login-select" onchange="renderDaySummary()" style="margin-bottom:12px;">
+
+<div class="report-box" id="ds-preview"></div>
+<div id="ds-sent" style="font-size:12px;color:#4caf50;font-weight:700;margin:8px 0 0;"></div>
+
+<button class="btn-full btn-green" id="ds-share" onclick="shareDaySummary()" style="margin-top:12px;">Share to WhatsApp</button>
+<button class="btn-full btn-dark" id="ds-copy" onclick="copyDaySummary()">Copy Summary</button>
 </div>
 
 <!-- SCREEN: VISIT HISTORY -->
@@ -493,10 +526,22 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div style="margin-bottom:16px;">
     <input type="text" id="new-store-input" placeholder="New store name..." style="width:100%;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:10px;color:#f0f0f0;font-family:inherit;font-size:14px;padding:11px;outline:none;margin-bottom:8px;">
     <div style="display:flex;gap:8px;">
-      <select id="new-store-type" style="flex:1;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:10px;color:#f0f0f0;font-family:inherit;font-size:14px;padding:11px;outline:none;appearance:none;"></select>
+      <select id="new-store-type" onchange="ncOnTypeChange()" style="flex:1;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:10px;color:#f0f0f0;font-family:inherit;font-size:14px;padding:11px;outline:none;appearance:none;"></select>
       <button onclick="addStore()" style="background:#c8f04c;color:#0f0f0f;border:none;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px;">Add</button>
     </div>
     <div style="font-size:11px;color:#555;margin-top:6px;" id="lbl-typehint">Product list type</div>
+<div class="edit-add-box" id="nc-picker" style="display:none;margin-top:10px;margin-bottom:0;">
+<div class="eab-title" id="nc-title">Pick items for this store</div>
+<input type="text" id="nc-search" placeholder="Search products..." autocomplete="off" oninput="renderNcSearch()">
+<div class="eab-results" id="nc-results"></div>
+<div id="nc-manual-wrap" style="display:none;margin-top:6px;">
+<input type="text" id="nc-manual-name" placeholder="Item name" autocomplete="off">
+<button onclick="ncAddManual()" style="width:100%;background:#ff8c00;color:#0f0f0f;border:none;border-radius:9px;padding:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;" id="nc-manual-btn">+ Add manually</button>
+</div>
+<div id="nc-chosen-title" style="font-size:12px;color:#c8f04c;font-weight:700;margin:12px 0 4px;"></div>
+<div class="eab-results" id="nc-chosen"></div>
+<button onclick="addStore()" id="nc-add-btn" style="width:100%;margin-top:10px;background:#c8f04c;color:#0f0f0f;border:none;border-radius:10px;padding:12px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px;">Add store</button>
+</div>
   </div>
 
   <div id="store-list-manage"></div>
@@ -534,7 +579,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div class="screen" id="s-order">
   <div class="top-bar">
     <h1 id="ord-title">Quick Order</h1>
-    <button class="back-btn" onclick="goTo('s-login')">← Back</button>
+    <button class="back-btn" onclick="ordBack()">← Back</button>
   </div>
 
   <div class="login-label" id="ord-outlet-label">Outlet</div>
@@ -603,7 +648,7 @@ si: {
   lblPlanForm:'🗓 Visit එකක් plan කරන්න', planLocPh:'Location (optional)', noPlan:'තාම plan එකක් නැහැ — උඩින් add කරන්න',
   tagToday:' · අද', tagPast:' · ගිය', planAdded:'🗓 Plan එකට add කළා ✓', planDup:'⚠ ඒ visit එක දැනටමත් plan එකේ තියෙනවා',
   planNeed:'Date එකයි store එකයි select කරන්න', planDoneToast:'🗓 Plan එකේ visit එක ✓ mark වුණා',
-  storeExists:'⚠ "{}" already exists', remove:'Remove', typeHint:'Product list type එක select කරන්න — ඒ list එකේ items තමයි scan වෙන්නේ',
+  dsBtn:'දවසේ Summary', dsTitle:'දවසේ Summary', dsDateLabel:'දිනය', dsShare:'📤 WhatsApp එකට යවන්න', dsCopy:'📋 Summary එක Copy කරන්න', dsNone:'මේ දිනයට visits නැහැ.', dsSentAt:'✓ {} ට යැව්වා', sentTitle:'යැවීම් තත්වය', sentKenko:'Kenko report', sentGravity:'Gravity report', sentPhotos:'Before/After photos', sentOrder:'Order (ඕන නම්)', sentAll:'ඔක්කොම යැව්වා ✓', ordGapsBtn:'Missing + Low items order කරන්න ({})', noGaps:'Missing හෝ low items නැහැ', prevMissOne:'ගිය visit එකෙත් missing', prevMissN:'ගිය visits {}ක්ම missing', prevLowOne:'ගිය visit එකේ low', prevBannerTitle:'මෙහි ගිය visit එක', prevBannerHint:'පහළ ⚠ වලින් පෙන්වා ඇත', ncOption:'අලුත් list එකක් — items search කර add කරන්න', ncTitle:'මේ store එකට items තෝරන්න', ncSearchPh:'🔍 Product එකක් search කරන්න…', ncChosen:'තෝරපු items ({})', ncNone:'තවම items නැහැ — පස්සේ checklist එකේ ✏️ එකෙනුත් add කරන්න පුළුවන්.', ncManualBtn:'+ අතින් add කරන්න', ncLabel:'Custom', ncAddBtn:'Store එක add කරන්න ({} items)', ncNeedName:'මුලින් store නම ඇතුළත් කරන්න', ncAddedEmpty:'"{}" හිස් list එකකින් add කළා — checklist එකේ ✏️ එකෙන් items add කරන්න', storeExists:'⚠ "{}" already exists', remove:'Remove', typeHint:'Product list type එක select කරන්න — ඒ list එකේ items තමයි scan වෙන්නේ',
   newStorePh:'New store name...',
   btnListEdit:'📝 Item Lists Edit කරන්න', leTitle:'Item Lists Edit', leOutlet:'Outlet එක තෝරන්න',
   leAddTitle:'➕ Item එකක් add කරන්න', leCurrentTitle:'📋 දැන් තියෙන items', leSearchPh:'🔍 Master list එකෙන් හොයන්න...',
@@ -648,7 +693,7 @@ ta: {
   lblPlanForm:'🗓 Visit ஒன்றை plan செய்யவும்', planLocPh:'Location (optional)', noPlan:'இன்னும் plan இல்லை — மேலே add செய்யவும்',
   tagToday:' · இன்று', tagPast:' · கடந்தது', planAdded:'🗓 Plan-இல் சேர்க்கப்பட்டது ✓', planDup:'⚠ அந்த visit ஏற்கனவே plan-இல் உள்ளது',
   planNeed:'Date மற்றும் store தேர்வு செய்யவும்', planDoneToast:'🗓 Plan-இல் visit ✓ mark ஆனது',
-  storeExists:'⚠ "{}" ஏற்கனவே உள்ளது', remove:'Remove', typeHint:'Product list type தேர்வு செய்யவும் — அந்த list-இன் items தான் scan ஆகும்',
+  dsBtn:'நாள் சுருக்கம்', dsTitle:'நாள் சுருக்கம்', dsDateLabel:'தேதி', dsShare:'📤 WhatsApp-ல் அனுப்பவும்', dsCopy:'📋 சுருக்கத்தை நகலெடு', dsNone:'இந்த தேதிக்கு visits இல்லை.', dsSentAt:'✓ {} மணிக்கு அனுப்பப்பட்டது', sentTitle:'அனுப்பிய நிலை', sentKenko:'Kenko report', sentGravity:'Gravity report', sentPhotos:'Before/After photos', sentOrder:'Order (விரும்பினால்)', sentAll:'அனைத்தும் அனுப்பப்பட்டது ✓', ordGapsBtn:'Missing + Low பொருட்களை order செய்யவும் ({})', noGaps:'Missing அல்லது low பொருட்கள் இல்லை', prevMissOne:'கடந்த visit-லும் missing', prevMissN:'கடந்த {} visits-லும் missing', prevLowOne:'கடந்த visit-ல் low', prevBannerTitle:'இங்கு கடந்த visit', prevBannerHint:'கீழே ⚠ குறிக்கப்பட்டுள்ளது', ncOption:'தனிப்பயன் பட்டியல் — பொருட்களைத் தேடிச் சேர்க்கவும்', ncTitle:'இந்த store-க்கான பொருட்களைத் தேர்ந்தெடுக்கவும்', ncSearchPh:'🔍 பொருளைத் தேடுங்கள்…', ncChosen:'தேர்ந்தெடுத்த பொருட்கள் ({})', ncNone:'இன்னும் பொருட்கள் இல்லை — பின்னர் checklist-இல் ✏️ மூலமும் சேர்க்கலாம்.', ncManualBtn:'+ கையால் சேர்க்கவும்', ncLabel:'Custom', ncAddBtn:'Store-ஐச் சேர்க்கவும் ({} பொருட்கள்)', ncNeedName:'முதலில் store பெயரை உள்ளிடவும்', ncAddedEmpty:'"{}" காலி பட்டியலுடன் சேர்க்கப்பட்டது — checklist-இல் ✏️ மூலம் பொருட்களைச் சேர்க்கவும்', storeExists:'⚠ "{}" ஏற்கனவே உள்ளது', remove:'Remove', typeHint:'Product list type தேர்வு செய்யவும் — அந்த list-இன் items தான் scan ஆகும்',
   newStorePh:'புதிய store பெயர்...',
   btnListEdit:'📝 Item Lists Edit', leTitle:'Item Lists Edit', leOutlet:'Outlet தேர்வு செய்யவும்',
   leAddTitle:'➕ Item ஒன்று சேர்க்க', leCurrentTitle:'📋 தற்போதைய items', leSearchPh:'🔍 Master list-இல் தேடவும்...',
@@ -693,7 +738,7 @@ en: {
   lblPlanForm:'🗓 Plan a visit', planLocPh:'Location (optional)', noPlan:'No plan yet — add one above',
   tagToday:' · today', tagPast:' · past', planAdded:'🗓 Added to plan ✓', planDup:'⚠ That visit is already in the plan',
   planNeed:'Select a date and store', planDoneToast:'🗓 Plan visit marked ✓',
-  storeExists:'⚠ "{}" already exists', remove:'Remove', typeHint:'Select the product list type — those items will be scanned',
+  dsBtn:'Day Summary', dsTitle:'Day Summary', dsDateLabel:'Date', dsShare:'📤 Share to WhatsApp', dsCopy:'📋 Copy Summary', dsNone:'No visits recorded for this date.', dsSentAt:'✓ Shared at {}', sentTitle:'Sent checklist', sentKenko:'Kenko report', sentGravity:'Gravity report', sentPhotos:'Before/After photos', sentOrder:'Order (optional)', sentAll:'All sent ✓', ordGapsBtn:'Order missing + low items ({})', noGaps:'No missing or low items', prevMissOne:'Missing last visit', prevMissN:'Missing last {} visits', prevLowOne:'Low last visit', prevBannerTitle:'Last visit here', prevBannerHint:'marked with ⚠ below', ncOption:'Custom list — search & add items', ncTitle:'Pick items for this store', ncSearchPh:'🔍 Search products…', ncChosen:'Selected items ({})', ncNone:'No items yet — you can also add them later with ✏️ in the checklist.', ncManualBtn:'+ Add manually', ncLabel:'Custom', ncAddBtn:'Add store ({} items)', ncNeedName:'Enter a store name first', ncAddedEmpty:'"{}" added with an empty list — add items with ✏️ in the checklist', storeExists:'⚠ "{}" already exists', remove:'Remove', typeHint:'Select the product list type — those items will be scanned',
   newStorePh:'New store name...',
   btnListEdit:'📝 Edit Item Lists', leTitle:'Edit Item Lists', leOutlet:'Select outlet',
   leAddTitle:'➕ Add an item', leCurrentTitle:'📋 Current items', leSearchPh:'🔍 Search the master list...',
@@ -752,7 +797,8 @@ function applyLang() {
   T('lbl-notes','lblNotes'); P('visit-notes','notesPh'); H('lbl-comp','lblComp');
   T('btn-complete','btnComplete');
   T('fin-title','finTitle'); T('lbl-preview','lblPreview'); T('btn-share','btnShare'); T('btn-copy','btnCopy'); T('btn-new','btnNew');
-  T('lbl-typehint','typeHint'); P('new-store-input','newStorePh');
+  T('lbl-typehint','typeHint'); P('new-store-input','newStorePh'); ncRefreshLabels();
+  T('ds-title','dsTitle'); T('ds-date-label','dsDateLabel'); T('ds-share','dsShare'); T('ds-copy','dsCopy'); renderDaySumBtn(); if (document.getElementById('s-daysum').classList.contains('active')) renderDaySummary();
   T('tab-visits','tabHistory'); T('tab-plan','tabPlan'); T('lbl-planform','lblPlanForm'); P('plan-loc','planLocPh');
   T('eab-title','eabTitle');
   T('lbl-gravity-preview','lblGravityPreview'); T('btn-share-gravity','btnShareGravity'); T('btn-copy-gravity','btnCopyGravity');
@@ -1178,7 +1224,10 @@ function openOrder() {
   document.getElementById('ord-manual-name').value = '';
   document.getElementById('ord-search-result').innerHTML = '';
   const on = document.getElementById('ord-note'); if (on) on.value = '';
+  let pf = null;
+  if (orderPrefill) { pf = orderPrefill; orderPrefill = null; sel.value = pf.store; orderItems = pf.items; if (on) on.value = pf.note || ''; }
   ordRefreshLoc();
+  if (pf) document.getElementById('ord-location').value = pf.loc || '';
   renderOrder();
 }
 
@@ -1311,11 +1360,14 @@ async function submitOrder() {
     queuePending(payload);
     showToast(t('offlineSaved'));
   }
+  logOrder(payload);
   orderItems = [];
   document.getElementById('ord-note').value = '';
   document.getElementById('ord-location').value = '';
   renderOrder();
-  goTo('s-login');
+  const back = orderReturnTo; orderReturnTo = 's-login';
+  if (back === 's-finish') markSent('order');
+  goTo(back);
 }
 
 function copyOrder() {
@@ -1540,7 +1592,8 @@ function goTo(id) {
   if (id === 's-manage') renderStoreManage();
   if (id === 's-listedit') openListEditor();
   if (id === 's-order') openOrder();
-  if (id === 's-login') { populateStoreSelect(); refreshLocationSuggestions(); updatePendingBadge(); renderExpiryReminders(); renderTodayPlan(); renderDraftBox(); }
+  if (id === 's-daysum') openDaySummary();
+  if (id === 's-login') { populateStoreSelect(); refreshLocationSuggestions(); updatePendingBadge(); renderExpiryReminders(); renderTodayPlan(); renderDraftBox(); renderDaySumBtn(); }
   if (id === 's-history') { renderHistory(); renderPlan(); }
 }
 
@@ -1610,6 +1663,7 @@ function startVisit() {
   currentStore = loc ? store + ' - ' + loc : store;
   visitStart = new Date();
   visitItems = getStoreItems(store);
+  resetSent();
   itemStatus = {};
   itemQty = {};
   openExpiry = new Set();
@@ -1660,6 +1714,8 @@ function renderChecklist() {
   const term = searchTerm.trim().toLowerCase();
   const curItems = activeItems();
   updateListSwitch();
+  renderPrevBanner();
+  const pdNow = prevData();
   const shown = curItems.filter(p =>
     (!term || p.name.toLowerCase().includes(term)) &&
     (!uncheckedOnly || !itemStatus[p.code])
@@ -1712,6 +1768,7 @@ function renderChecklist() {
     return `<div class="item-row ${rowCls}">
       <div style="flex:1;min-width:0;">
         <div class="item-name">${p.name}</div>
+        ${prevBadge(p.code, pdNow)}
         ${qtyRow}
       </div>
       <div class="st-btns">
@@ -2224,6 +2281,7 @@ function shareBeforeAfter() {
   // NOTE: no awaits before share() — must run inside the tap
   if (navigator.canShare && navigator.canShare({ files })) {
     navigator.share({ files, title: 'Gravity Before/After', text: (currentStore || '') + ' — Before/After' })
+      .then(() => markSent('photos'))
       .catch(e => {
         if (e && e.name === 'AbortError') return;   // user closed the share sheet
         baDownloadFiles(files);
@@ -2231,6 +2289,7 @@ function shareBeforeAfter() {
       });
   } else {
     baDownloadFiles(files);
+    markSent('photos');
     showToast(files.length > 1 ? (files.length + ' images saved — attach them in WhatsApp') : 'Image saved — attach it in WhatsApp');
   }
 }
@@ -2455,6 +2514,11 @@ function goFinish() {
     gWrap.style.display = 'none';
   }
 
+  const gapsN = statusItems('miss').length + statusItems('low').length;
+  const ob = document.getElementById('btn-order-gaps');
+  if (ob) { ob.style.display = gapsN ? 'block' : 'none'; ob.textContent = t('ordGapsBtn', gapsN); }
+  renderSentStatus();
+
   goTo('s-finish');
 }
 
@@ -2488,7 +2552,7 @@ function buildReport() {
   }
   if (miss.length) {
     r += `🔴 MISSING (${miss.length}):\n`;
-    miss.forEach(p => r += `  • ${p.name}\n`);
+    miss.forEach(p => r += `  • ${p.name}${repTag(p, 'k')}\n`);
     r += '\n';
   }
   if (un.length) {
@@ -2509,6 +2573,7 @@ function buildReport() {
 
   r += `━━━━━━━━━━━━━━━━━━━━\n`;
   r += `Missing: ${miss.length} · Low: ${low.length}\n`;
+  { const rep = miss.filter(p => repTag(p, 'k')).length; if (rep) r += `\uD83D\uDD01 Repeat gaps: ${rep}\n`; }
   r += `Status: ${miss.length === 0 && low.length === 0 ? '✅ FULL STOCK' : '⚠ ACTION REQUIRED'}`;
   return r;
 }
@@ -2539,7 +2604,7 @@ function buildGravityReport() {
 
   if (gok.length) { r += `✅ AVAILABLE (${gok.length}):\n`; gok.forEach(p => r += `  • ${lbl(p)}${qtyStr(p)}\n`); r += '\n'; }
   if (glow.length) { r += `🟡 LOW STOCK (${glow.length}):\n`; glow.forEach(p => r += `  • ${lbl(p)}${qtyStr(p)}\n`); r += '\n'; }
-  if (gmiss.length) { r += `🔴 MISSING (${gmiss.length}):\n`; gmiss.forEach(p => r += `  • ${lbl(p)}\n`); r += '\n'; }
+  if (gmiss.length) { r += `🔴 MISSING (${gmiss.length}):\n`; gmiss.forEach(p => r += `  • ${lbl(p)}${repTag(p, 'g')}\n`); r += '\n'; }
   if (gexp.length) {
     r += `⏰ EXPIRY DATES (${gexp.length}):\n`;
     gexp.forEach(e => {
@@ -2557,6 +2622,7 @@ function buildGravityReport() {
 
   r += `━━━━━━━━━━━━━━━━━━━━\n`;
   r += `Missing: ${gmiss.length} · Low: ${glow.length}\n`;
+  { const grep = gmiss.filter(p => repTag(p, 'g')).length; if (grep) r += `\uD83D\uDD01 Repeat gaps: ${grep}\n`; }
   r += `Status: ${gmiss.length === 0 && glow.length === 0 ? '✅ FULL STOCK' : '⚠ ACTION REQUIRED'}`;
   return r;
 }
@@ -2747,6 +2813,7 @@ function restoreDraft() {
   currentStoreBase = d.storeBase;
   currentStore = d.store;
   visitStart = new Date(d.start);
+  resetSent();
   visitItems = getStoreItems(d.storeBase);
   itemStatus = d.status || {};
   itemQty = d.qty || {};
@@ -2914,7 +2981,11 @@ function pickPlanEntry(i) {
 
 // ===== VISIT HISTORY (local) =====
 function saveHistory() {
+  savePrev();
   const h = JSON.parse(localStorage.getItem('kenko_visit_history') || '[]');
+  const hid = visitStart.toISOString();
+  for (let i = h.length - 1; i >= 0; i--) if (h[i].store === currentStore && h[i].time === hid) h.splice(i, 1);   // sharing twice = one visit
+  const gi = gravityItems();
   h.unshift({
     store: currentStore,
     rep: currentRep,
@@ -2922,10 +2993,20 @@ function saveHistory() {
     ok: statusItems('ok').length,
     low: statusItems('low').length,
     miss: statusItems('miss').length,
-    report: buildReport()
-  });
+    report: buildReport(),
+mn: statusItems('miss').map(p => p.name),
+ln: statusItems('low').map(p => p.name),
+gk: statusItems('ok', gi).length,
+gl: statusItems('low', gi).length,
+gm: statusItems('miss', gi).length,
+gmn: statusItems('miss', gi).map(p => p.name),
+exp: expiryAlertCount(),
+rpt: statusItems('miss').filter(p => repTag(p, 'k')).length,
+grpt: statusItems('miss', gi).filter(p => repTag(p, 'g')).length
+});
   if (h.length > 50) h.length = 50;
   try { localStorage.setItem('kenko_visit_history', JSON.stringify(h)); } catch(e) {}
+  renderDaySumBtn();
 }
 
 function renderHistory() {
@@ -2951,13 +3032,13 @@ function renderHistory() {
 function shareReport() {
   submitVisit(); // Auto submit to manager dashboard (saves BOTH Kenko + Gravity data)
   const text = buildReport();
-  if (navigator.share) navigator.share({ title: 'Kenko1st Report', text });
+  if (navigator.share) navigator.share({ title: 'Kenko1st Report', text }).then(() => markSent('kenko')).catch(() => {});
   else { copyReport(); showToast(t('copiedWA')); }
 }
 
 function shareGravityReport() {
   const text = buildGravityReport();
-  if (navigator.share) navigator.share({ title: 'Gravity Report', text });
+  if (navigator.share) navigator.share({ title: 'Gravity Report', text }).then(() => markSent('gravity')).catch(() => {});
   else { copyGravityReport(); showToast(t('copiedWA')); }
 }
 
@@ -2965,12 +3046,14 @@ function copyGravityReport() {
   const text = buildGravityReport();
   if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => showToast(t('copied')));
   else { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('Copied ✓'); }
+  markSent('gravity');
 }
 
 function copyReport() {
   const text = buildReport();
   if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => showToast(t('copied')));
   else { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); showToast('Copied ✓'); }
+  markSent('kenko');
 }
 
 function newVisit() {
@@ -2981,9 +3064,354 @@ function newVisit() {
   scanFiles = [];
   visitStart = null;
   clearDraft();
+  resetSent();
   document.getElementById('store-location').value = '';
   goTo('s-login');
   populateStoreSelect();
+}
+
+// ===== (4) DAY SUMMARY - one WhatsApp message for the whole day =====
+const DS_SENT_KEY = 'kenko_daysum_sent_v1';
+function dsLoad(key, def) { try { return JSON.parse(localStorage.getItem(key) || def); } catch (e) { return JSON.parse(def); } }
+function dsDayKey(iso) { const d = new Date(iso); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+
+// items with an expiry date that is passed or within 30 days (same rule as the expiry alerts)
+function expiryAlertCount() {
+  const loc = currentLoc();     // expiry batches are tagged with the location they were recorded at
+  let n = 0;
+  visitItems.concat(gravityItems()).forEach(p => { if (getItemExpiry(p.code).some(e => (e.loc || '') === loc && (isExpired(e.date) || isExpiringSoon(e.date)))) n++; });
+  return n;
+}
+
+function logOrder(p) {
+  try {
+    const a = dsLoad('kenko_order_log_v1', '[]');
+    a.unshift({ store: p.store, time: new Date().toISOString(), n: (p.orderItems || []).length });
+    if (a.length > 60) a.length = 60;
+    localStorage.setItem('kenko_order_log_v1', JSON.stringify(a));
+  } catch (e) {}
+}
+
+function dsEntries(day) {      // that day's visits, one per (store,time), newest first
+  const seen = new Set();
+  return dsLoad('kenko_visit_history', '[]').filter(v => v.time && dsDayKey(v.time) === day).filter(v => {
+    const k = v.store + '|' + v.time;
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+}
+function dsLatestPerStore(list) { const m = new Map(); list.forEach(v => { if (!m.has(v.store)) m.set(v.store, v); }); return Array.from(m.values()); }
+function dsTop(vs, field, max) {
+  const c = new Map();
+  vs.forEach(v => (v[field] || []).forEach(n => c.set(n, (c.get(n) || 0) + 1)));
+  return Array.from(c.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, max);
+}
+
+function buildDaySummary(day) {
+  const all = dsEntries(day);
+  if (!all.length) return null;
+  const vs = dsLatestPerStore(all);                                   // latest visit per outlet (any list)
+  const kv = dsLatestPerStore(all.filter(v => (v.ok || 0) + (v.low || 0) + (v.miss || 0) > 0));   // per outlet: latest visit that checked the Kenko list
+  const gv = dsLatestPerStore(all.filter(v => (v.gk || 0) + (v.gl || 0) + (v.gm || 0) > 0));      // ...and the Gravity list
+  const sum = (arr, f) => arr.reduce((a, v) => a + (v[f] || 0), 0);
+  const reps = Array.from(new Set(all.map(v => v.rep).filter(Boolean))).join(', ');
+  const parts = day.split('-');
+  const line = '\u2501'.repeat(20);
+  const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+
+  let r = '\uD83D\uDCC5 DAILY SUMMARY\n' + line + '\n';
+  r += 'Rep: ' + (reps || '-') + '\nDate: ' + parts[2] + '/' + parts[1] + '/' + parts[0] + '\n';
+  r += 'Outlets visited: ' + vs.length + (all.length > vs.length ? ' (' + all.length + ' visits)' : '') + '\n' + line + '\n\n';
+
+  if (kv.length) {
+    const full = kv.filter(v => !v.miss && !v.low).length;
+    r += '\uD83C\uDFEA KENKO1ST\n';
+    r += '\u2705 Full stock: ' + full + ' of ' + plural(kv.length, 'outlet') + '\n';
+    r += '\uD83D\uDD34 Missing: ' + plural(sum(kv, 'miss'), 'item') + ' \u00B7 \uD83D\uDFE1 Low: ' + plural(sum(kv, 'low'), 'item') + '\n';
+    const top = dsTop(kv, 'mn', 5);
+    if (top.length) { r += 'Most missing:\n'; top.forEach(x => { r += '  \u2022 ' + x[0] + ' \u2014 ' + plural(x[1], 'outlet') + '\n'; }); }
+    const rpt = sum(kv, 'rpt');
+    if (rpt) r += '\uD83D\uDD01 Repeat gaps: ' + rpt + '\n';
+    r += '\n';
+  }
+  if (gv.length) {
+    r += '\uD83E\uDD65 GRAVITY\n';
+    r += '\uD83D\uDD34 Missing: ' + plural(sum(gv, 'gm'), 'item') + ' \u00B7 \uD83D\uDFE1 Low: ' + plural(sum(gv, 'gl'), 'item') + '\n';
+    const gt = dsTop(gv, 'gmn', 5);
+    if (gt.length) { r += 'Most missing:\n'; gt.forEach(x => { r += '  \u2022 ' + x[0] + ' \u2014 ' + plural(x[1], 'outlet') + '\n'; }); }
+    const grpt = sum(gv, 'grpt');
+    if (grpt) r += '\uD83D\uDD01 Repeat gaps: ' + grpt + '\n';
+    r += '\n';
+  }
+  const exp = sum(vs, 'exp'), expOut = vs.filter(v => v.exp).length;
+  const orders = dsLoad('kenko_order_log_v1', '[]').filter(o => o.time && dsDayKey(o.time) === day);
+  let extra = '';
+  if (exp) extra += '\u23F0 Expiry alerts: ' + plural(exp, 'item') + ' (' + plural(expOut, 'outlet') + ')\n';
+  if (orders.length) extra += '\uD83D\uDED2 Orders sent: ' + orders.length + ' (' + plural(orders.reduce((a, o) => a + (o.n || 0), 0), 'line') + ')\n';
+  if (extra) r += extra + '\n';
+
+  r += 'BY OUTLET:\n';
+  const kMap = new Map(kv.map(v => [v.store, v])), gMap = new Map(gv.map(v => [v.store, v]));
+  Array.from(new Set(all.map(v => v.store))).sort((a, b) => a.localeCompare(b)).forEach(name => {
+    const k = kMap.get(name), g = gMap.get(name), bits = [];
+    if (k) {
+      if (!k.miss && !k.low) bits.push('\u2705 full stock');
+      else { if (k.miss) bits.push('\uD83D\uDD34 ' + k.miss + ' missing'); if (k.low) bits.push('\uD83D\uDFE1 ' + k.low + ' low'); }
+    }
+    if (g && (g.gm || g.gl)) bits.push('\uD83E\uDD65 ' + [g.gm ? g.gm + ' missing' : '', g.gl ? g.gl + ' low' : ''].filter(Boolean).join(' \u00B7 '));
+    r += '  \u2022 ' + name + (bits.length ? ' \u2014 ' + bits.join(' \u00B7 ') : '') + '\n';
+  });
+  return r.trimEnd();
+}
+
+function renderDaySumBtn() {
+  const b = document.getElementById('btn-daysum');
+  if (!b) return;
+  const day = todayStr();
+  const n = dsEntries(day).length;
+  const sent = !!dsLoad(DS_SENT_KEY, '{}')[day];
+  b.textContent = '\uD83D\uDCC5 ' + t('dsBtn') + (n ? ' \u00B7 ' + n : '') + (sent ? ' \u2713' : '');
+  b.style.color = (n && !sent) ? '#c8f04c' : '';          // gentle reminder: visits done, summary not sent yet
+}
+
+function openDaySummary() {
+  const inp = document.getElementById('ds-date');
+  if (!inp.value) inp.value = todayStr();
+  renderDaySummary();
+}
+
+function renderDaySummary() {
+  const day = document.getElementById('ds-date').value || todayStr();
+  const txt = buildDaySummary(day);
+  document.getElementById('ds-preview').textContent = txt || t('dsNone');
+  document.getElementById('ds-share').disabled = !txt;
+  document.getElementById('ds-copy').disabled = !txt;
+  const sent = dsLoad(DS_SENT_KEY, '{}')[day];
+  document.getElementById('ds-sent').textContent = sent ? t('dsSentAt', new Date(sent).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })) : '';
+}
+
+function dsMarkSent(day) {
+  const m = dsLoad(DS_SENT_KEY, '{}');
+  m[day] = new Date().toISOString();
+  try { localStorage.setItem(DS_SENT_KEY, JSON.stringify(m)); } catch (e) {}
+  renderDaySummary();
+  renderDaySumBtn();
+}
+
+function shareDaySummary() {
+  const day = document.getElementById('ds-date').value || todayStr();
+  const text = buildDaySummary(day);
+  if (!text) return;
+  if (navigator.share) navigator.share({ title: 'Kenko1st Daily Summary', text }).then(() => dsMarkSent(day)).catch(() => {});
+  else { copyDaySummary(); showToast(t('copiedWA')); }
+}
+
+function copyDaySummary() {
+  const day = document.getElementById('ds-date').value || todayStr();
+  const text = buildDaySummary(day);
+  if (!text) return;
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => showToast(t('copied')));
+  else { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast(t('copied')); }
+  dsMarkSent(day);
+}
+
+// ===== (1) ORDER FROM VISIT / (2) SENT TICKS / (3) COMPARE WITH LAST VISIT =====
+let orderPrefill = null, orderReturnTo = 's-login';
+
+function orderFromVisit() {
+  const miss = statusItems('miss'), low = statusItems('low');
+  const need = miss.concat(low);
+  if (!need.length) { showToast(t('noGaps')); return; }
+  orderPrefill = {
+    store: currentStoreBase,
+    loc: currentStore.indexOf(currentStoreBase + ' - ') === 0 ? currentStore.slice(currentStoreBase.length + 3) : '',
+    items: need.map(p => ({ code: p.code, name: p.name, qty: 1 })),
+    note: 'From shelf check: ' + miss.length + ' missing, ' + low.length + ' low'
+  };
+  orderReturnTo = 's-finish';
+  goTo('s-order');
+}
+
+function ordBack() {
+  const to = orderReturnTo;
+  orderReturnTo = 's-login';
+  if (to === 's-finish') {        // order not sent -> drop the auto-filled lines
+    orderItems = [];
+    const on = document.getElementById('ord-note'); if (on) on.value = '';
+    renderOrder();
+  }
+  goTo(to);
+}
+
+let sentState = { kenko: false, gravity: false, photos: false, order: false };
+function resetSent() { sentState = { kenko: false, gravity: false, photos: false, order: false }; }
+function markSent(k) { sentState[k] = true; renderSentStatus(); }
+
+function renderSentStatus() {
+  const box = document.getElementById('sent-status');
+  if (!box) return;
+  const req = [['kenko', t('sentKenko')]];
+  if (hasGravityData()) req.push(['gravity', t('sentGravity')]);
+  if (baSpots.some(s => s.before && s.after)) req.push(['photos', t('sentPhotos')]);
+  const gaps = statusItems('miss').length + statusItems('low').length;
+  const chip = (k, label, optional) => `<span class="sent-chip ${sentState[k] ? 'done' : (optional ? 'opt' : 'todo')}">${sentState[k] ? '\u2713' : '\u25CB'} ${label}</span>`;
+  const allDone = req.every(r => sentState[r[0]]);
+  box.innerHTML = `<div class="sent-title">${t('sentTitle')}</div><div class="sent-row">` +
+    req.map(r => chip(r[0], r[1], false)).join('') +
+    (gaps ? chip('order', t('sentOrder'), true) : '') +
+    `</div>` + (allDone ? `<div class="sent-all">${t('sentAll')}</div>` : '');
+}
+
+// --- last visit at this outlet (kept on this phone, per outlet name) ---
+const PREV_KEY = 'kenko_prev_v1';
+const EMPTY_PREV = { k: { miss: {}, low: [] }, g: { miss: {}, low: [] } };
+function loadPrevMap() { try { return JSON.parse(localStorage.getItem(PREV_KEY) || '{}'); } catch (e) { return {}; } }
+
+// list = 'k' (Kenko) | 'g' (Gravity). Streaks as they were BEFORE the current visit.
+function prevFor(list) {
+  if (!visitStart) return null;
+  const e = loadPrevMap()[currentStore];
+  if (!e) return null;
+  const same = e.id === visitStart.toISOString();
+  const base = same ? e.from : e.cur;
+  const ts = same ? e.fromTs : e.ts;
+  if (!base || !ts) return null;
+  const L = base[list] || { miss: {}, low: [] };
+  return { miss: L.miss || {}, low: new Set(L.low || []), ts };
+}
+function prevData() { return prevFor(currentList === 'gravity' ? 'g' : 'k'); }
+
+function savePrev() {
+  try {
+    const map = loadPrevMap();
+    const id = visitStart.toISOString();
+    const e = map[currentStore];
+    const same = !!(e && e.id === id);                    // saving twice in one visit must not double count
+    const base = same ? (e.from || EMPTY_PREV) : (e ? e.cur : EMPTY_PREV);
+    const baseTs = same ? e.fromTs : (e ? e.ts : null);
+    const calc = (items, key) => {
+      const miss = {};
+      statusItems('miss', items).forEach(p => { miss[p.code] = (((base[key] || {}).miss || {})[p.code] || 0) + 1; });
+      return { miss, low: statusItems('low', items).map(p => p.code) };
+    };
+    map[currentStore] = { id, ts: new Date().toISOString(), fromTs: baseTs, from: base, cur: { k: calc(visitItems, 'k'), g: calc(gravityItems(), 'g') } };
+    const keys = Object.keys(map);
+    if (keys.length > 40) keys.sort((a, b) => new Date(map[a].ts) - new Date(map[b].ts)).slice(0, keys.length - 40).forEach(k => delete map[k]);
+    localStorage.setItem(PREV_KEY, JSON.stringify(map));
+  } catch (e) { /* storage full - skip */ }
+}
+
+function prevBadge(code, pd) {
+  if (!pd) return '';
+  const n = pd.miss[code];
+  if (n) return `<div class="prev-badge">\u26A0 ${n > 1 ? t('prevMissN', n) : t('prevMissOne')}</div>`;
+  if (pd.low.has(code)) return `<div class="prev-badge low">${t('prevLowOne')}</div>`;
+  return '';
+}
+
+function renderPrevBanner() {
+  const el = document.getElementById('prev-banner');
+  if (!el) return;
+  const pd = prevData();
+  const m = pd ? Object.keys(pd.miss).length : 0, l = pd ? pd.low.size : 0;
+  if (!pd || (!m && !l)) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = `<b>${t('prevBannerTitle')}</b> \u00B7 ${new Date(pd.ts).toLocaleDateString('en-GB')}<br>${m} missing \u00B7 ${l} low \u2014 ${t('prevBannerHint')}`;
+}
+
+// " 🔁 3 visits in a row" for a gap that was also missing at the previous visit(s)
+function repTag(p, list) {
+  const pd = prevFor(list);
+  const n = pd && pd.miss[p.code];
+  return n ? ' \uD83D\uDD01 ' + (n + 1) + ' visits in a row' : '';
+}
+
+// ===== NEW STORE: custom list (no preset list - search & add items) =====
+const NC_CUSTOM = '__custom__';
+let ncChosen = [];   // [{code,name}] picked for the store being added
+function listLabel(k) { return LIST_TYPES[k] || (String(k).indexOf('c_') === 0 ? t('ncLabel') : k); }
+function ncEsc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+function ncOnTypeChange() {
+  const sel = document.getElementById('new-store-type');
+  const box = document.getElementById('nc-picker');
+  if (!sel || !box) return;
+  const on = sel.value === NC_CUSTOM;
+  box.style.display = on ? 'block' : 'none';
+  if (on) renderNcChosen();
+}
+
+function ncRefreshLabels() {
+  const el = id => document.getElementById(id);
+  const sel = el('new-store-type');
+  if (sel) { const o = Array.prototype.find.call(sel.options, x => x.value === NC_CUSTOM); if (o) o.textContent = t('ncOption'); }
+  if (el('nc-title')) el('nc-title').textContent = t('ncTitle');
+  if (el('nc-search')) el('nc-search').placeholder = t('ncSearchPh');
+  if (el('nc-manual-btn')) el('nc-manual-btn').textContent = t('ncManualBtn');
+  if (el('nc-picker')) { renderNcChosen(); renderNcSearch(); }
+}
+
+function renderNcSearch() {
+  const inp = document.getElementById('nc-search');
+  const box = document.getElementById('nc-results');
+  const manual = document.getElementById('nc-manual-wrap');
+  if (!inp || !box) return;
+  const term = inp.value.trim().toLowerCase();
+  if (!term) { box.innerHTML = ''; manual.style.display = 'none'; return; }
+  const have = new Set(ncChosen.map(p => p.code));
+  const matches = masterItemList().filter(p => p.name.toLowerCase().includes(term) || String(p.code).includes(term)).slice(0, 30);
+  box.innerHTML = matches.map(p => {
+    const h = have.has(p.code);
+    return `<div class="le-sr ${h ? 'exists' : ''}" ${h ? '' : `onclick="ncAdd('${p.code}')"`}>
+<div class="sr-name">${ncEsc(p.name)}<div class="le-code">${p.code}</div></div>
+<div class="sr-add">${h ? '\u2713' : '+'}</div>
+</div>`;
+  }).join('');
+  manual.style.display = 'block';
+  document.getElementById('nc-manual-name').placeholder = '"' + inp.value.trim() + '"';
+}
+
+function ncResetSearch() {
+  const ns = document.getElementById('nc-search'); if (ns) ns.value = '';
+  const nr = document.getElementById('nc-results'); if (nr) nr.innerHTML = '';
+  const nm = document.getElementById('nc-manual-wrap'); if (nm) nm.style.display = 'none';
+  const mn = document.getElementById('nc-manual-name'); if (mn) mn.value = '';
+}
+
+function ncAdd(code) {
+  const m = masterItemList().find(p => p.code === code);
+  if (!m || ncChosen.some(p => p.code === code)) return;
+  ncChosen.push({ code: m.code, name: m.name });
+  ncResetSearch();
+  renderNcChosen();
+  const ns = document.getElementById('nc-search'); if (ns) ns.focus();   // ready for the next item
+}
+
+function ncAddManual() {
+  const name = document.getElementById('nc-manual-name').value.trim();
+  if (!name) { showToast(t('leNeedName')); return; }
+  ncChosen.push({ code: 'C' + Date.now() + Math.floor(Math.random() * 100), name });
+  ncResetSearch();
+  renderNcChosen();
+  const ns = document.getElementById('nc-search'); if (ns) ns.focus();
+}
+
+function ncRemove(code) {
+  ncChosen = ncChosen.filter(p => p.code !== code);
+  renderNcChosen();
+}
+
+function renderNcChosen() {
+  const box = document.getElementById('nc-chosen');
+  if (!box) return;
+  document.getElementById('nc-chosen-title').textContent = t('ncChosen', ncChosen.length);
+  const ab = document.getElementById('nc-add-btn'); if (ab) ab.textContent = t('ncAddBtn', ncChosen.length);
+  box.innerHTML = ncChosen.length
+    ? ncChosen.map(p => `<div class="le-sr" style="cursor:default;">
+<div class="sr-name">${ncEsc(p.name)}<div class="le-code">${p.code}</div></div>
+<div class="sr-add" style="color:#ff5252;cursor:pointer;padding:0 6px;" onclick="ncRemove('${p.code}')">\u2715</div>
+</div>`).join('')
+    : `<div style="font-size:12px;color:#666;padding:6px 2px;">${t('ncNone')}</div>`;
 }
 
 // ===== MANAGE STORES =====
@@ -2991,13 +3419,15 @@ function renderStoreManage() {
   const list = document.getElementById('store-list-manage');
   list.innerHTML = stores.map((s, i) => `
     <div class="visit-chip">
-      <div class="vc-left">🏪 ${s}<div style="font-size:11px;color:#666;font-weight:400;margin-top:2px;">${LIST_TYPES[getStoreType(s)] || getStoreType(s)} list · ${getStoreItems(s).length} items</div></div>
+      <div class="vc-left">🏪 ${s}<div style="font-size:11px;color:#666;font-weight:400;margin-top:2px;">${listLabel(getStoreType(s))} list · ${getStoreItems(s).length} items</div></div>
       <button onclick="removeStore(${i})" style="background:rgba(255,82,82,0.12);color:#ff5252;border:none;padding:5px 10px;border-radius:8px;font-size:12px;cursor:pointer;">${t('remove')}</button>
     </div>`).join('');
 
   // populate type select
   const tSel = document.getElementById('new-store-type');
   if (tSel && !tSel.options.length) {
+    const co = document.createElement('option'); co.value = NC_CUSTOM; co.textContent = t('ncOption'); tSel.appendChild(co);
+    setTimeout(ncOnTypeChange, 0);   // Custom is the first (default) option -> show the picker
     Object.entries(LIST_TYPES).forEach(([k, label]) => {
       const o = document.createElement('option');
       o.value = k;
@@ -3010,9 +3440,18 @@ function renderStoreManage() {
 function addStore() {
   const inp = document.getElementById('new-store-input');
   const name = inp.value.trim();
-  if (!name) return;
+  if (!name) { showToast(t('ncNeedName')); inp.focus(); return; }
   if (stores.includes(name)) { showToast(t('storeExists', name)); return; }
-  const type = document.getElementById('new-store-type').value || 'spar';
+  let type = document.getElementById('new-store-type').value || 'spar';
+  let customCount = -1;
+  if (type === NC_CUSTOM) {
+    type = 'c_' + Date.now().toString(36);          // own list key -> never shared with other stores
+    customCount = ncChosen.length;
+    if (customCount) { const ov = loadOverrides(); ov[type] = { add: ncChosen.map(p => ({ code: p.code, name: p.name })), remove: [] }; saveOverrides(ov); }
+    ncChosen = [];
+    ncResetSearch();
+    renderNcChosen();
+  }
   stores.push(name);
   storeTypes[name] = type;
   saveStores();
@@ -3020,13 +3459,15 @@ function addStore() {
   inp.value = '';
   renderStoreManage();
   populateStoreSelect();
-  showToast(name + ' added (' + (LIST_TYPES[type] || type) + ' list) ✓');
+  showToast(customCount === 0 ? t('ncAddedEmpty', name) : name + ' added (' + (customCount > 0 ? customCount + ' items' : listLabel(type) + ' list') + ') ✓');
 }
 
 function removeStore(i) {
   const name = stores[i];
   stores.splice(i, 1);
+  const rtype = storeTypes[name];
   if (!(name in DEFAULT_STORE_TYPES)) delete storeTypes[name];
+  if (rtype && String(rtype).indexOf('c_') === 0 && !Object.values(storeTypes).includes(rtype)) { const ov = loadOverrides(); delete ov[rtype]; saveOverrides(ov); }
   saveStores();
   saveStoreTypes();
   renderStoreManage();
